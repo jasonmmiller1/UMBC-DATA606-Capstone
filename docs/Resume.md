@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="JasonMMiller.png" width="160" />
-</p>
+![Jason M. Miller](JasonMMiller.png)
 
 # Jason M. Miller
 ---
