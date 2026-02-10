@@ -1,0 +1,132 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+coverage/
+.coverage.*
+htmlcov/
+.tox/
+nox/
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+.conda/
+conda-env/
+*.conda
+
+# =========================
+# Jupyter / IPython
+# =========================
+.ipynb_checkpoints/
+.profile_default/
+.ipython/
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# =========================
+# Secrets / env files
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Data & artifacts (project-specific)
+# =========================
+# Vector DB / indexes / embeddings / caches
+data/indexes/
+data/**/indexes/
+data/**/index/
+data/**/vector_store/
+data/**/vectordb/
+data/**/chroma/
+data/**/faiss/
+data/**/milvus/
+data/**/qdrant/
+data/**/pgvector/
+data/**/embeddings/
+data/**/cache/
+
+# Large raw inputs (keep small samples only if intentionally committed)
+data/**/raw/
+data/**/downloads/
+data/**/exports/
+
+# PDFs and Office docs (often large) - remove these lines if you WANT to version them
+*.pdf
+*.docx
+*.pptx
+*.xlsx
+
+# Generated synthetic outputs (optional: comment out if you want to commit them)
+data/policies_synth_pdf/
+data/policies_synth_md/
+
+# Evaluation outputs / logs
+data/**/results/
+data/**/reports/
+data/**/metrics/
+logs/
+*.log
+
+# =========================
+# Model weights / checkpoints
+# =========================
+models/
+checkpoints/
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.gguf
+*.onnx
+*.tflite
+
+# Hugging Face cache (default locations vary)
+.hf/
+huggingface/
+.cache/huggingface/
+.cache/torch/
+.cache/
+
+# =========================
+# Streamlit
+# =========================
+.streamlit/secrets.toml
+
+# =========================
+# Docker
+# =========================
+**/.docker/
+docker-compose.override.yml
+
+# =========================
+# Misc
+# =========================
+tmp/
+temp/
