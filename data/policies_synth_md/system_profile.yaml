@@ -1,0 +1,37 @@
+synthetic_disclaimer: "SYNTHETIC DEMO ARTIFACT — ACADEMIC USE ONLY"
+
+organization:
+  name: "Rivermark Logistics (Fictional)"
+  mission: "Provides logistics coordination and reporting services for distributed operations."
+  size: "Mid-size organization (approx. 500–2000 staff)"
+  locations: ["US-East", "US-Central"]
+
+system:
+  name: "Rivermark Operations Portal (ROP) (Fictional)"
+  description: "Web portal + API used to manage operational workflows, reporting, and service requests."
+  environment: "Hybrid (cloud-hosted app tier, managed database, centralized logging)"
+  users:
+    - type: "Standard User"
+      description: "Business users submitting and reviewing requests"
+    - type: "Privileged Admin"
+      description: "System administrators managing accounts and configurations"
+    - type: "Auditor"
+      description: "Read-only access to logs and evidence for assessments"
+  data_types:
+    - "Operational records"
+    - "User account data"
+    - "Audit logs"
+    - "PII (limited: names, email addresses, user IDs)"
+  availability: "Moderate"
+  integrity: "Moderate"
+  confidentiality: "Moderate-like (demo approximation; not an official categorization)"
+
+constraints:
+  - "No real DoD program names, system names, or markings"
+  - "No classified data"
+  - "No real vulnerabilities or exploit instructions"
+  - "Policies must include measurable requirements when intended (e.g., retention days), and intentional gaps when designed"
+
+baseline_assessment_goal:
+  description: "Demonstrate a control-to-evidence gap analysis workflow using a small control subset."
+  control_subset_hint: ["AC", "AU", "IR", "CM", "RA", "PL", "SR (optional)"]

@@ -1,0 +1,13 @@
+control_id,expected_coverage,evidence_doc,evidence_location,gap_notes
+AC-2,partial,02_access_control_policy.md,4.0 Policy Statements; 5.0 Procedures,Missing explicit recertification frequency and documented periodic review procedure.
+AC-3,covered,02_access_control_policy.md,4.0 Policy Statements,Least privilege and role-based access described; may need more enforcement detail later.
+AC-6,covered,02_access_control_policy.md,4.0 Policy Statements,Least privilege explicitly stated; separation for privileged accounts included.
+AU-2,covered,04_logging_monitoring_standard.md,4.0 Policy Statements,"Defines log event types (auth, failures, privileged actions, config changes)."
+AU-6,partial,04_logging_monitoring_standard.md,5.0 Procedures,Does not specify consistent review cadence for all event types; lacks metrics/KPIs.
+AU-11,covered,04_logging_monitoring_standard.md,4.0 Policy Statements,"Retention specified (90 days online, 1 year archived)."
+IR-4,partial,03_incident_response_plan.md,4.0 Policy Statements; 5.0 Procedures,No escalation time objectives by severity; no exercise schedule.
+IR-6,partial,03_incident_response_plan.md,4.0 Policy Statements,Stakeholder notification described but lacks explicit reporting timelines and criteria.
+PL-2,partial,01_mini_ssp.md,4.0 Policy Statements; 7.0 Review Cadence,No defined continuous monitoring cadence; boundary change approvals not formalized.
+CM-2,missing,01_mini_ssp.md,N/A,Baseline configuration management not described yet in this Week 1 pack.
+RA-5,missing,01_mini_ssp.md,N/A,Vulnerability scanning program not described yet (planned Week 2+ docs).
+SR-3,unknown,N/A,N/A,Supply chain policy not created yet; planned in later synthetic pack.
