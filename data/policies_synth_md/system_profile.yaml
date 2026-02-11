@@ -8,6 +8,7 @@ organization:
 
 system:
   name: "Rivermark Operations Portal (ROP) (Fictional)"
+  system_type: ["Web App", "API", "Database"]     # <-- add if missing
   description: "Web portal + API used to manage operational workflows, reporting, and service requests."
   environment: "Hybrid (cloud-hosted app tier, managed database, centralized logging)"
   users:
@@ -22,16 +23,19 @@ system:
     - "User account data"
     - "Audit logs"
     - "PII (limited: names, email addresses, user IDs)"
-  availability: "Moderate"
-  integrity: "Moderate"
-  confidentiality: "Moderate-like (demo approximation; not an official categorization)"
+
+posture:
+  statement: "Baseline-like posture for demo only; not an official categorization or DoD baseline."
+  availability: "Moderate-like"
+  integrity: "Moderate-like"
+  confidentiality: "Moderate-like"
 
 constraints:
   - "No real DoD program names, system names, or markings"
   - "No classified data"
   - "No real vulnerabilities or exploit instructions"
-  - "Policies must include measurable requirements when intended (e.g., retention days), and intentional gaps when designed"
+  - "Policies must include measurable requirements when intended and intentional gaps for evaluation"
 
 baseline_assessment_goal:
-  description: "Demonstrate a control-to-evidence gap analysis workflow using a small control subset."
+  description: "Demonstrate control-to-evidence gap analysis using a small control subset."
   control_subset_hint: ["AC", "AU", "IR", "CM", "RA", "PL", "SR (optional)"]
