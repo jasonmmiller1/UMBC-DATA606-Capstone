@@ -1,20 +1,19 @@
-# {{TITLE}}
+# Access Control Policy — {{SYSTEM_NAME}}
 
 > **{{SYNTHETIC_DISCLAIMER}}**
 
-**Document ID:** {{DOC_ID}}  
+**Document ID:** POLICY_AC  
 **Version:** {{VERSION}}  
 **Effective Date:** {{EFFECTIVE_DATE}}  
 **Owner:** {{OWNER_ROLE}}  
-**Applies To:** {{SYSTEM_NAME}}  
 
 ---
 
 ## 1.0 Purpose
-{{PURPOSE}}
+Define account management, access provisioning, least privilege, and privileged access requirements for {{SYSTEM_NAME}}.
 
 ## 2.0 Scope
-{{SCOPE}}
+Applies to all users and administrators of {{SYSTEM_NAME}} and related authentication/authorization services.
 
 ## 3.0 Roles and Responsibilities
 {{ROLES}}
@@ -32,4 +31,6 @@
 {{REVIEW_CADENCE}}
 
 ## 8.0 Glossary
-{{GLOSSARY}}
+- **Least Privilege**
+- **Privileged Account**
+- **Access Recertification**
