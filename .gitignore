@@ -1,0 +1,123 @@
+# =========================
+# RMF Assistant .gitignore
+# Reproducible capstone repo
+# Keep: code, notebooks, templates, small synthetic markdown corpus,
+#       truth table, parsed OSCAL parquet/jsonl (small, demo-friendly)
+# Ignore: raw downloads, standards PDFs, vector DB storage, embeddings,
+#         caches, logs, model weights
+# =========================
+
+# ---- Python / build ----
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ---- Test / lint caches ----
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- Secrets / env ----
+.env
+.env.*
+secrets.toml
+**/secrets.toml
+
+# ---- Virtual envs / conda ----
+.venv/
+venv/
+env/
+.direnv/
+conda-bld/
+
+# =========================
+# Data: ignore raw downloads & derived stores
+# =========================
+
+# Raw standards PDFs / references (re-download; track in docs/manifest instead)
+data/standards_raw/
+data/standards_parsed_md/
+
+# Raw OSCAL repo clone (large). Keep pinned commit in docs/references.md instead.
+data/oscal_raw/oscal-content/
+
+# Vector DB persistent data / volumes (rebuild from parsed + chunks)
+data/vector_db/
+data/qdrant/
+data/milvus/
+data/chroma/
+**/qdrant_storage/
+**/milvus/
+**/chroma/
+
+# Embeddings / indexes / chunk stores (regenerate)
+data/**/embeddings/
+data/**/indexes/
+data/**/index/
+data/**/.cache/
+**/.cache/
+
+# Docling / OCR caches (regenerate)
+**/.docling/
+**/docling_cache/
+**/rapidocr_cache/
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# =========================
+# Models / weights (too large; provide download instructions)
+# =========================
+models/
+checkpoints/
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.gguf
+*.onnx
+*.engine
+
+# =========================
+# Outputs
+# =========================
+
+# Generated PDFs (regenerate from templates if needed)
+data/**/*.pdf
+
+# If you later create lots of parquet files, ignore them by default…
+# …but explicitly KEEP the small parsed OSCAL parquet used for the demo.
+data/**/*.parquet
+!data/oscal_parsed/controls_80053.parquet
+
+# Allow other small parsed OSCAL artifacts (jsonl) to be committed
+!data/oscal_parsed/*.jsonl
+
+# (Optional) if you store any other small “must-keep” parquets later, whitelist them here:
+# !data/oscal_parsed/*.parquet
+
+# =========================
+# Temp / scratch
+# =========================
+tmp/
+scratch/
