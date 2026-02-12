@@ -1,6 +1,8 @@
 # RMF Assistant — Evidence-Grounded LLM for DoD RMF Policy Q&A + Control Gap Analysis  
 **(OSCAL + Docling + Hybrid RAG | UMBC DATA 606 Capstone)**
-**NOTE --- WORK IN PROGRESS SPRING 2026 COMPLETION --- NOTE**
+
+
+## **NOTE --- WORK IN PROGRESS SPRING 2026 COMPLETION --- NOTE**
 
 This repository contains a demo-quality prototype that supports the Department of Defense (DoD) Risk Management Framework (RMF) workflow by enabling:
 
