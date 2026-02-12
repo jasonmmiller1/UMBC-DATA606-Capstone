@@ -106,6 +106,9 @@ checkpoints/
 data/**/*.pdf
 !data/policies_synth_pdf/**/*.pdf
 
+# Large standards PDFs (keep local)
+data/standards_raw/**/*.pdf
+
 # If you later create lots of parquet files, ignore them by default…
 # …but explicitly KEEP the small parsed OSCAL parquet used for the demo.
 data/**/*.parquet
