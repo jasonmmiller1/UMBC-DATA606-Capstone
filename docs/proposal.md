@@ -27,10 +27,10 @@ timeline_weeks: 8-10
   https://github.com/jasonmmiller1/UMBC-DATA606-Capstone
 
 - **Link to the author's LinkedIn profile**  
-[  (LinkedIn)](https://www.linkedin.com/in/jasonmmiller/)
+[(LinkedIn)](https://www.linkedin.com/in/jasonmmiller/)
 
-- **Link to your PowerPoint presentation file**  
-  *(TODO: add PPT link, e.g., `/slides/Capstone_RMF_Assistant.pptx`)*
+- **Link to presentation**  
+  [(RMF ASSISTANT — PROPOSAL PRESENTATION)](https://docs.google.com/presentation/d/1UsXvum-EVhE8DZbuMtrhUTdHkmSdaP5Gj-ZI-DUJN-c/edit?usp=sharing)
 
 - **Link to your YouTube video**  
   *(TODO: add YouTube link)*
