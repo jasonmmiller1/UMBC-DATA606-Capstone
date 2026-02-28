@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 from app.llm.client import get_llm_client
 from app.rag.citations import normalize_citations
-from app.rag.prompts import GROUNDED_SYSTEM_PROMPT
+from app.rag.prompts import GROUNDED_POLICY_VS_CONTROL_PROMPT, GROUNDED_SYSTEM_PROMPT
 from app.retrieval.service import get_qdrant_client, hybrid_search
 
 
@@ -15,6 +15,7 @@ MIN_TOP_SCORE = 0.02
 MAX_LLM_CONTEXT_CHUNKS = 8
 MAX_LLM_CHUNK_CHARS = 1200
 CONTROL_ID_RE = re.compile(r"\b[A-Z]{2}-\d{1,3}(?:\(\d+\))?\b")
+COVERAGE_LINE_RE = re.compile(r"(?im)^\s*coverage\s*:\s*(covered|partial|missing|unknown)\s*$")
 POLICY_QUERY_PHRASES = [
     "our policy",
     "what is our",
@@ -44,6 +45,7 @@ MIXED_QUERY_HINTS = [
     "gaps",
     "coverage",
 ]
+VALID_COVERAGE_LABELS = {"covered", "partial", "missing", "unknown"}
 
 
 def _dedupe_by_chunk_id(results: List[Dict]) -> List[Dict]:
@@ -140,6 +142,43 @@ def _context_block(retrieved_chunks: List[Dict], max_chunks: int = 8) -> str:
 
 def _is_insufficient_message(text: str) -> bool:
     return "insufficient evidence" in (text or "").lower()
+
+
+def _extract_coverage_label(text: str) -> Optional[str]:
+    if not text:
+        return None
+    match = COVERAGE_LINE_RE.search(text)
+    if match:
+        return match.group(1).lower()
+    return None
+
+
+def _infer_coverage_label(text: str, *, fallback: Optional[str] = None) -> Optional[str]:
+    explicit = _extract_coverage_label(text)
+    if explicit:
+        return explicit
+
+    t = (text or "").lower()
+    if "partial" in t:
+        return "partial"
+    if "not covered" in t or "no policy evidence" in t or "missing" in t:
+        return "missing"
+    if "covered" in t or "fully addressed" in t:
+        return "covered"
+    if "unknown" in t or "cannot determine" in t or "insufficient evidence" in t:
+        return "unknown"
+    return fallback
+
+
+def _with_coverage_line(text: str, label: Optional[str]) -> str:
+    if not label or label not in VALID_COVERAGE_LABELS:
+        return text
+    if _extract_coverage_label(text):
+        return text
+    body = (text or "").rstrip()
+    if not body:
+        return f"Coverage: {label}"
+    return f"{body}\nCoverage: {label}"
 
 
 def _confidence(unique_chunks: int, top_score: Optional[float]) -> float:
@@ -275,6 +314,7 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
         "draft_answer": "",
         "abstained": True,
         "confidence": 0.0,
+        "predicted_coverage": None,
         "citations": [],
         "retrieved_chunks": [],
     }
@@ -364,11 +404,20 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
                 "insufficient evidence. Retrieval index paths are not configured. "
                 "Set BM25_INDEX_PATH and CHUNKS_PATH and ensure indexing is complete."
             )
+            if mixed_query:
+                base["predicted_coverage"] = "missing"
+                base["draft_answer"] = _with_coverage_line(base["draft_answer"], "missing")
             return base
         base["draft_answer"] = f"insufficient evidence. Retrieval error: {exc}"
+        if mixed_query:
+            base["predicted_coverage"] = "missing"
+            base["draft_answer"] = _with_coverage_line(base["draft_answer"], "missing")
         return base
     except Exception as exc:
         base["draft_answer"] = f"insufficient evidence. Retrieval error: {exc}"
+        if mixed_query:
+            base["predicted_coverage"] = "missing"
+            base["draft_answer"] = _with_coverage_line(base["draft_answer"], "missing")
         return base
 
     results = _dedupe_by_chunk_id(raw_results)
@@ -406,6 +455,7 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
                 "draft_answer": missing_msg,
                 "abstained": True,
                 "confidence": 0.1,
+                "predicted_coverage": None,
                 "citations": citations,
                 "retrieved_chunks": retrieved_chunks,
             }
@@ -417,6 +467,7 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
                 "draft_answer": policy_missing_msg,
                 "abstained": True,
                 "confidence": 0.1,
+                "predicted_coverage": None,
                 "citations": citations,
                 "retrieved_chunks": retrieved_chunks,
             }
@@ -430,14 +481,18 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             missing_parts.append("policy evidence")
         base.update(
             {
-                "draft_answer": (
-                    "insufficient evidence. Missing "
-                    + " and ".join(missing_parts)
-                    + f" for control {base_control_id or 'framework requirement'}. "
-                    "Need at least 2 control chunks and 2 policy chunks."
+                "draft_answer": _with_coverage_line(
+                    (
+                        "insufficient evidence. Missing "
+                        + " and ".join(missing_parts)
+                        + f" for control {base_control_id or 'framework requirement'}. "
+                        "Need at least 2 control chunks and 2 policy chunks."
+                    ),
+                    "missing",
                 ),
                 "abstained": True,
                 "confidence": 0.1,
+                "predicted_coverage": "missing",
                 "citations": citations,
                 "retrieved_chunks": retrieved_chunks,
             }
@@ -451,17 +506,22 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
         "Use only the context below.\n\n"
         f"Context:\n{_context_block(llm_context, max_chunks=MAX_LLM_CONTEXT_CHUNKS)}"
     )
+    system_prompt = GROUNDED_POLICY_VS_CONTROL_PROMPT if mixed_query else GROUNDED_SYSTEM_PROMPT
     llm_text = llm_client.generate(
-        system=GROUNDED_SYSTEM_PROMPT,
+        system=system_prompt,
         user=user_prompt,
         context=llm_context,
     )
 
     llm_unavailable = llm_text.startswith("LLM not configured") or llm_text.startswith("OpenRouter backend selected")
     llm_error = llm_text.startswith("OpenRouter error:")
+    predicted_coverage: Optional[str] = None
     if llm_unavailable:
         # Retrieval-only mode keeps UI useful before an LLM is configured.
         draft = _extractive_summary(results)
+        if mixed_query:
+            predicted_coverage = _infer_coverage_label(draft, fallback="missing")
+            draft = _with_coverage_line(draft, predicted_coverage)
         if framework_query or policy_specific or mixed_query:
             abstained = False
         else:
@@ -470,6 +530,9 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             draft = "insufficient evidence.\n" + draft
     else:
         draft = llm_text
+        if mixed_query:
+            predicted_coverage = _infer_coverage_label(llm_text, fallback="unknown")
+            draft = _with_coverage_line(draft, predicted_coverage)
         if framework_query or policy_specific or mixed_query:
             abstained = False
         else:
@@ -485,12 +548,16 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             draft = "insufficient evidence. LLM temporarily unavailable and no evidence chunks were retrieved."
         abstained = True
         confidence = min(confidence, 0.1)
+        if mixed_query:
+            predicted_coverage = predicted_coverage or "unknown"
+            draft = _with_coverage_line(draft, predicted_coverage)
 
     base.update(
         {
             "draft_answer": draft,
             "abstained": abstained,
             "confidence": confidence,
+            "predicted_coverage": predicted_coverage,
             "citations": citations,
             "retrieved_chunks": retrieved_chunks,
         }

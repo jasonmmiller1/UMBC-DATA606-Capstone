@@ -5,6 +5,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence
 
 
 _CONTROL_BASE_RE = re.compile(r"\b([A-Z]{2,3}-\d{1,3})\b")
+_COVERAGE_LINE_RE = re.compile(r"(?im)^\s*coverage\s*:\s*(covered|partial|missing|unknown|abstain)\s*$")
 _COVERAGE_LABELS = {"covered", "partial", "missing", "unknown", "abstain"}
 _NULL_LABELS = {"", "none", "null", "n/a", "na"}
 _NEAR_MATCH_SCORES = {
@@ -55,9 +56,16 @@ def _norm_doc_id(value: Any) -> str:
 
 def _norm_coverage_label(value: Any) -> Optional[str]:
     if isinstance(value, dict):
-        for key in ("coverage", "predicted_coverage", "expected_coverage", "label"):
+        # Prefer explicit structured prediction when present.
+        for key in ("predicted_coverage", "coverage", "coverage_label", "label", "expected_coverage"):
             if key in value:
                 return _norm_coverage_label(value.get(key))
+        # Fallback: parse text-bearing fields if explicit labels are missing.
+        for key in ("draft_answer", "answer", "final_answer", "raw_output", "text"):
+            if key in value:
+                parsed = _norm_coverage_label(value.get(key))
+                if parsed is not None:
+                    return parsed
         return None
 
     if value is None:
@@ -68,6 +76,10 @@ def _norm_coverage_label(value: Any) -> Optional[str]:
         return None
     if text in _COVERAGE_LABELS:
         return text
+
+    explicit = _COVERAGE_LINE_RE.search(text)
+    if explicit:
+        return explicit.group(1).lower()
 
     # Parse free-form answer text in deterministic priority order.
     if "insufficient evidence" in text or "abstain" in text or "out of scope" in text:

@@ -131,14 +131,14 @@ def _extract_predicted_coverage(
     response: Dict[str, Any],
     expected_coverage: Any,
 ) -> Optional[Any]:
-    for key in ("coverage", "predicted_coverage", "coverage_label", "label"):
+    for key in ("predicted_coverage", "coverage", "coverage_label", "label"):
         if response.get(key) is not None:
             return response.get(key)
 
     for parent_key in ("assessment", "classification", "result"):
         parent = response.get(parent_key)
         if isinstance(parent, dict):
-            for key in ("coverage", "predicted_coverage", "coverage_label", "label"):
+            for key in ("predicted_coverage", "coverage", "coverage_label", "label"):
                 if parent.get(key) is not None:
                     return parent.get(key)
 
