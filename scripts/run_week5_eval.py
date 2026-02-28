@@ -233,7 +233,13 @@ def _run_one(
 
     context_precision = score_context_precision(expected, citations, intent)
     coverage_accuracy = score_coverage_accuracy(expected_coverage, predicted_coverage)
-    abstention_score = score_abstention(intent, expected_coverage, abstained, citations)
+    abstention_score = score_abstention(
+        intent,
+        expected_coverage,
+        abstained,
+        citations,
+        mode=mode,
+    )
     overall = round((context_precision + coverage_accuracy + abstention_score) / 3.0, 4)
 
     answer_text = (

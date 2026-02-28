@@ -200,13 +200,18 @@ def score_abstention(
     expected_coverage: Any,
     abstained_flag: Any,
     citations: Iterable[Dict[str, Any]],
+    mode: Optional[str] = None,
 ) -> float:
     """
     Deterministic abstention score in [0, 1].
 
-    Should abstain when:
-    - intent contains 'abstain', or
-    - expected coverage label is 'abstain'
+    Strict out-of-scope rule:
+    - If mode == 'out_of_scope_policy' OR expected coverage is 'abstain',
+      return 1.0 only when abstained_flag is True, else 0.0.
+      (No credit for narrative-only abstention text.)
+
+    For all other modes, keep existing logic:
+    - Should abstain when intent contains 'abstain'
 
     Scoring:
     - Should abstain:
@@ -220,11 +225,16 @@ def score_abstention(
     """
     intent = (expected_intent or "").strip().lower()
     expected_label = _norm_coverage_label(expected_coverage)
-    should_abstain = ("abstain" in intent) or (expected_label == "abstain")
+    mode_norm = (mode or "").strip().lower()
+    strict_out_of_scope = (mode_norm == "out_of_scope_policy") or (expected_label == "abstain")
 
     abstained = _to_bool(abstained_flag)
     citation_count = len(list(citations or []))
 
+    if strict_out_of_scope:
+        return 1.0 if abstained else 0.0
+
+    should_abstain = "abstain" in intent
     if should_abstain:
         if not abstained:
             return 0.0
