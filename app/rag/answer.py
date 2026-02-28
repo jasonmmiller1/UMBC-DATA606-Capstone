@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from app.llm.client import get_llm_client
 from app.rag.citations import normalize_citations
@@ -46,6 +46,54 @@ MIXED_QUERY_HINTS = [
     "coverage",
 ]
 VALID_COVERAGE_LABELS = {"covered", "partial", "missing", "unknown"}
+
+POLICY_DOC_HINT_RULES: List[Tuple[Sequence[str], str, Sequence[str]]] = [
+    (
+        ("pam", "privileged session recording"),
+        "PAM / Privileged Access / Session Recording Standard",
+        ("pam", "privileged", "privileged access", "session recording"),
+    ),
+    (
+        ("rto", "rpo", "business continuity", "dr plan", "disaster recovery"),
+        "Business Continuity Plan / DR Plan",
+        ("business continuity", "disaster recovery", "dr", "rto", "rpo"),
+    ),
+    (
+        ("mobile device", "byod"),
+        "Mobile Device / BYOD policy",
+        ("mobile", "byod", "device"),
+    ),
+    (
+        ("supply chain", "vendor risk"),
+        "Supply Chain Risk Management Policy / Vendor Risk Standard",
+        ("supply chain", "vendor", "third-party", "scrm"),
+    ),
+    (
+        ("media sanitization",),
+        "Media Sanitization Policy / Media Protection Standard",
+        ("media sanitization", "sanitization", "media"),
+    ),
+    (
+        ("vulnerability management",),
+        "Vulnerability Management Policy / Scanning Standard",
+        ("vulnerability", "scanning"),
+    ),
+    (
+        ("password complexity", "password policy"),
+        "Password Policy / Identity and Authentication Standard",
+        ("password", "complexity"),
+    ),
+    (
+        ("endpoint protection", "edr"),
+        "Endpoint Protection / EDR Standard",
+        ("endpoint", "edr", "quarantine"),
+    ),
+    (
+        ("cryptographic key management", "key rotation"),
+        "Cryptographic Key Management Policy",
+        ("cryptographic", "key management", "key rotation"),
+    ),
+]
 
 
 def _dedupe_by_chunk_id(results: List[Dict]) -> List[Dict]:
@@ -181,6 +229,48 @@ def _with_coverage_line(text: str, label: Optional[str]) -> str:
     return f"{body}\nCoverage: {label}"
 
 
+def _detect_policy_doc_hint(query: str) -> Tuple[str, Sequence[str]]:
+    text = (query or "").lower()
+    for query_terms, hint_label, evidence_terms in POLICY_DOC_HINT_RULES:
+        if any(term in text for term in query_terms):
+            return hint_label, evidence_terms
+    return "relevant policy document", ()
+
+
+def _policy_insufficient_message(doc_hint: str) -> str:
+    return f"Insufficient evidence in the uploaded policy corpus. Please upload/ingest {doc_hint}."
+
+
+def _policy_chunk_count(results: List[Dict]) -> int:
+    count = 0
+    for item in results:
+        payload = item.get("payload", {}) or {}
+        if payload.get("source_type") in {"policy_pdf", "policy_md"}:
+            count += 1
+    return count
+
+
+def _matching_policy_hint_chunk_count(results: List[Dict], hint_terms: Sequence[str]) -> int:
+    if not hint_terms:
+        return 0
+    matched = 0
+    for item in results:
+        payload = item.get("payload", {}) or {}
+        if payload.get("source_type") not in {"policy_pdf", "policy_md"}:
+            continue
+        haystack = " ".join(
+            [
+                str(payload.get("doc_id", "") or ""),
+                str(payload.get("doc_title", "") or ""),
+                str(payload.get("section_path", "") or ""),
+                str(payload.get("chunk_text", "") or ""),
+            ]
+        ).lower()
+        if any(term in haystack for term in hint_terms):
+            matched += 1
+    return matched
+
+
 def _confidence(unique_chunks: int, top_score: Optional[float]) -> float:
     count_conf = min(1.0, unique_chunks / 10.0)
     if top_score is None:
@@ -302,6 +392,8 @@ def _count_sources(results: List[Dict]) -> tuple[int, int]:
 def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -> dict:
     scope = scope or {}
     collection = scope.get("collection", "rmf_chunks")
+    eval_mode = str(scope.get("mode", "") or "").lower()
+    eval_intent = str(scope.get("intent", "") or "").lower()
 
     llm_client = get_llm_client()
 
@@ -318,11 +410,6 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
         "citations": [],
         "retrieved_chunks": [],
     }
-    policy_missing_msg = (
-        "insufficient evidence. I don’t have sufficient evidence in the uploaded policy corpus to answer that. "
-        "Please upload/ingest the relevant policy (e.g., Mobile Device / BYOD / Endpoint Security policy). "
-        "If you meant the control requirement, ask: 'What does NIST 800-53 require for mobile devices?'"
-    )
     framework_missing_msg = "insufficient evidence. Missing control evidence for framework query."
 
     control_ids = extract_control_ids(query)
@@ -332,6 +419,9 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
     policy_specific = query_mode == "policy"
     framework_query = query_mode == "framework"
     mixed_query = query_mode == "policy_vs_control"
+    out_of_scope_policy_mode = eval_mode == "out_of_scope_policy" or "abstain" in eval_intent
+    policy_doc_hint, policy_hint_terms = _detect_policy_doc_hint(query)
+    policy_missing_msg = _policy_insufficient_message(policy_doc_hint)
     try:
         if mixed_query:
             control_results: List[Dict] = []
@@ -400,6 +490,11 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
     except RuntimeError as exc:
         msg = str(exc)
         if "BM25_INDEX_PATH" in msg or "CHUNKS_PATH" in msg:
+            if policy_specific or out_of_scope_policy_mode:
+                base["draft_answer"] = policy_missing_msg
+                base["abstained"] = True
+                base["confidence"] = 0.1
+                return base
             base["draft_answer"] = (
                 "insufficient evidence. Retrieval index paths are not configured. "
                 "Set BM25_INDEX_PATH and CHUNKS_PATH and ensure indexing is complete."
@@ -408,12 +503,22 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
                 base["predicted_coverage"] = "missing"
                 base["draft_answer"] = _with_coverage_line(base["draft_answer"], "missing")
             return base
+        if policy_specific or out_of_scope_policy_mode:
+            base["draft_answer"] = policy_missing_msg
+            base["abstained"] = True
+            base["confidence"] = 0.1
+            return base
         base["draft_answer"] = f"insufficient evidence. Retrieval error: {exc}"
         if mixed_query:
             base["predicted_coverage"] = "missing"
             base["draft_answer"] = _with_coverage_line(base["draft_answer"], "missing")
         return base
     except Exception as exc:
+        if policy_specific or out_of_scope_policy_mode:
+            base["draft_answer"] = policy_missing_msg
+            base["abstained"] = True
+            base["confidence"] = 0.1
+            return base
         base["draft_answer"] = f"insufficient evidence. Retrieval error: {exc}"
         if mixed_query:
             base["predicted_coverage"] = "missing"
@@ -443,6 +548,23 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
     top_score = float(results[0]["rrf_score"]) if results and results[0].get("rrf_score") is not None else None
     weak_retrieval = unique_count < MIN_UNIQUE_CHUNKS or (top_score is not None and top_score < MIN_TOP_SCORE)
     control_count, policy_count = _count_sources(results)
+    policy_chunk_count = _policy_chunk_count(results)
+    policy_hint_match_chunks = _matching_policy_hint_chunk_count(results, policy_hint_terms)
+    policy_has_hint_match = True if not policy_hint_terms else policy_hint_match_chunks >= 2
+    policy_has_min_chunks = policy_chunk_count >= 2
+    policy_evidence_is_weak_or_irrelevant = weak_retrieval or (not policy_has_hint_match) or (not policy_has_min_chunks)
+    if out_of_scope_policy_mode:
+        base.update(
+            {
+                "draft_answer": policy_missing_msg,
+                "abstained": True,
+                "confidence": 0.1,
+                "predicted_coverage": None,
+                "citations": citations,
+                "retrieved_chunks": retrieved_chunks,
+            }
+        )
+        return base
     if framework_query and control_count < 1:
         missing_msg = framework_missing_msg
         if base_control_id:
@@ -461,7 +583,7 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             }
         )
         return base
-    if policy_specific and policy_count < 2:
+    if policy_specific and (out_of_scope_policy_mode or policy_evidence_is_weak_or_irrelevant):
         base.update(
             {
                 "draft_answer": policy_missing_msg,

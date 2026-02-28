@@ -211,7 +211,14 @@ def _run_one(
                 raise RuntimeError("assess_control requested but app.assess.engine is unavailable")
             response = _invoke_assess_control(assess_control_fn, question, row, top_k=top_k)
         else:
-            response = answer_question(question, top_k=top_k, scope={})
+            response = answer_question(
+                question,
+                top_k=top_k,
+                scope={
+                    "mode": mode,
+                    "intent": intent,
+                },
+            )
     except Exception as exc:
         error = str(exc)
         response = {
