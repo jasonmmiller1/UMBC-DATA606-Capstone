@@ -131,6 +131,33 @@ Outputs:
 - Test output:
   - `data/policies_synth_md/_docling_test.md`
 
+### ✅ Week 2 retrieval pipeline (Qdrant + local BM25 + RRF)
+Modules:
+- `app/ingest/chunkers.py`
+- `app/index/qdrant_schema.py`
+- `app/index/index_to_qdrant.py`
+- `app/index/bm25_index.py`
+- `app/retrieval/retrieve.py`
+- `app/retrieval/run_week2_tests.py`
+
+Quick run:
+```bash
+# 1) Start vector DB
+docker compose up -d
+
+# 2) Build chunks + index into Qdrant
+python -m app.index.index_to_qdrant
+
+# 3) Build local BM25 index
+python -m app.index.bm25_index --build
+
+# 4) Test hybrid retrieval
+python -m app.retrieval.retrieve "account management requirements"
+
+# 5) Run week 2 query set and save reproducible outputs
+python -m app.retrieval.run_week2_tests
+```
+
 ---
 
 ## Evaluation Artifacts (In Progress)

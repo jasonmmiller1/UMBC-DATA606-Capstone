@@ -1,0 +1,7 @@
+{"question": "AC-2", "filters": {"source_type": "oscal_control", "control_id": "AC-2"}}
+{"question": "What does our access control policy say about account reviews?"}
+{"question": "IR-4", "filters": {"source_type": "oscal_control", "control_id": "IR-4"}}
+{"question": "How long are logs retained in the synthetic policy set?"}
+{"question": "Does the policy define incident escalation timelines?"}
+{"question": "What is the CM-2 baseline configuration requirement?"}
+

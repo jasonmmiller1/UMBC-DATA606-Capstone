@@ -1,0 +1,64 @@
+[
+  {
+    "query": "AC-2",
+    "filters": {
+      "source_type": "oscal_control",
+      "control_id": "AC-2"
+    }
+  },
+  {
+    "query": "IR-4",
+    "filters": {
+      "source_type": "oscal_control",
+      "control_id": "IR-4"
+    }
+  },
+  {
+    "query": "AU-2",
+    "filters": {
+      "source_type": "oscal_control",
+      "control_id": "AU-2"
+    }
+  },
+  {
+    "query": "account management requirements"
+  },
+  {
+    "query": "incident response handling"
+  },
+  {
+    "query": "log review frequency"
+  },
+  {
+    "query": "how often are accounts reviewed?"
+  },
+  {
+    "query": "least privilege privileged accounts"
+  },
+  {
+    "query": "who approves access requests"
+  },
+  {
+    "query": "retention period for logs"
+  },
+  {
+    "query": "policy for disabling accounts on termination"
+  },
+  {
+    "query": "does policy define incident escalation timelines"
+  },
+  {
+    "query": "system boundary components"
+  },
+  {
+    "query": "find text in access control policy only",
+    "filters": {
+      "source_type": "policy_pdf",
+      "doc_id": "02_access_control_policy"
+    }
+  },
+  {
+    "query": "configuration management baseline control CM-2"
+  }
+]
+

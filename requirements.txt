@@ -90,8 +90,9 @@ omegaconf==2.3.0
 opencv-python==4.13.0.92
 openpyxl==3.1.5
 overrides==7.7.0
-packaging @ file:///home/task_176104879157968/conda-bld/packaging_1761049080585/work
+packaging==25.0
 pandas==2.3.3
+qdrant-client==1.17.0
 pandocfilters==1.5.1
 parso==0.8.6
 pexpect==4.9.0
@@ -134,6 +135,7 @@ rpds-py==0.30.0
 rtree==1.4.1
 safetensors==0.7.0
 scipy==1.15.3
+sentence-transformers==5.1.2
 semchunk==2.2.2
 Send2Trash==2.1.0
 shapely==2.1.2
