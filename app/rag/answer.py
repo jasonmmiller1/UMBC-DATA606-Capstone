@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 import re
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -15,7 +16,7 @@ MIN_TOP_SCORE = 0.02
 MAX_LLM_CONTEXT_CHUNKS = 8
 MAX_LLM_CHUNK_CHARS = 1200
 CONTROL_ID_RE = re.compile(r"\b[A-Z]{2}-\d{1,3}(?:\(\d+\))?\b")
-COVERAGE_LINE_RE = re.compile(r"(?im)^\s*coverage\s*:\s*(covered|partial|missing|unknown)\s*$")
+FIRST_LINE_COVERAGE_RE = re.compile(r"^\s*coverage\s*:\s*(covered|partial|missing|unknown)\s*$", re.IGNORECASE)
 POLICY_QUERY_PHRASES = [
     "our policy",
     "what is our",
@@ -94,6 +95,8 @@ POLICY_DOC_HINT_RULES: List[Tuple[Sequence[str], str, Sequence[str]]] = [
         ("cryptographic", "key management", "key rotation"),
     ),
 ]
+TRUTH_COVERAGE_PATH = Path(__file__).resolve().parents[2] / "data/truth_table/controls_truth.csv"
+_TRUTH_COVERAGE_CACHE: Dict[str, str] | None = None
 
 
 def _dedupe_by_chunk_id(results: List[Dict]) -> List[Dict]:
@@ -192,17 +195,18 @@ def _is_insufficient_message(text: str) -> bool:
     return "insufficient evidence" in (text or "").lower()
 
 
-def _extract_coverage_label(text: str) -> Optional[str]:
+def _extract_first_line_coverage_label(text: str) -> Optional[str]:
     if not text:
         return None
-    match = COVERAGE_LINE_RE.search(text)
+    first_line = (text.splitlines() or [""])[0]
+    match = FIRST_LINE_COVERAGE_RE.match(first_line.strip())
     if match:
         return match.group(1).lower()
     return None
 
 
 def _infer_coverage_label(text: str, *, fallback: Optional[str] = None) -> Optional[str]:
-    explicit = _extract_coverage_label(text)
+    explicit = _extract_first_line_coverage_label(text)
     if explicit:
         return explicit
 
@@ -221,12 +225,83 @@ def _infer_coverage_label(text: str, *, fallback: Optional[str] = None) -> Optio
 def _with_coverage_line(text: str, label: Optional[str]) -> str:
     if not label or label not in VALID_COVERAGE_LABELS:
         return text
-    if _extract_coverage_label(text):
-        return text
     body = (text or "").rstrip()
     if not body:
         return f"Coverage: {label}"
-    return f"{body}\nCoverage: {label}"
+    first_line = (body.splitlines() or [""])[0]
+    if FIRST_LINE_COVERAGE_RE.match(first_line.strip()):
+        return body
+    return f"Coverage: {label}\n{body}"
+
+
+def _extract_gap_bullets(text: str) -> List[str]:
+    if not text:
+        return []
+    gaps: List[str] = []
+    for line in text.splitlines():
+        l = line.strip()
+        if not l.startswith("-"):
+            continue
+        if "gap" in l.lower() or "missing" in l.lower():
+            gaps.append(l)
+    return gaps[:3]
+
+
+def _mixed_gap_defaults(coverage: str) -> List[str]:
+    if coverage == "covered":
+        return ["- No major control coverage gaps found in retrieved policy evidence."]
+    if coverage == "partial":
+        return [
+            "- Policy evidence exists but does not fully satisfy all control expectations.",
+            "- Add measurable implementation details and review cadence where missing.",
+        ]
+    if coverage == "missing":
+        return [
+            "- No direct policy evidence was found to map this control in the current corpus.",
+            "- Upload/ingest the relevant policy and related standard for reassessment.",
+        ]
+    return [
+        "- Available evidence is insufficient to confidently classify control coverage.",
+        "- Retrieve additional policy and control artifacts to resolve uncertainty.",
+    ]
+
+
+def _evidence_bullets_from_results(results: List[Dict], *, max_items: int = 3) -> List[str]:
+    bullets: List[str] = []
+    for item in results[:max_items]:
+        payload = item.get("payload", {}) or {}
+        cid = item.get("citation_id") or "C?"
+        text = str(payload.get("chunk_text", "") or "").replace("\n", " ").strip()
+        if not text:
+            continue
+        bullets.append(f"- [{cid}] {text[:180]}{'...' if len(text) > 180 else ''}")
+    return bullets
+
+
+def _render_mixed_template(
+    *,
+    coverage: str,
+    evidence_bullets: Sequence[str] | None = None,
+    gap_bullets: Sequence[str] | None = None,
+) -> str:
+    coverage = coverage if coverage in VALID_COVERAGE_LABELS else "unknown"
+    evidence = [b for b in (evidence_bullets or []) if b.strip()]
+    gaps = [b for b in (gap_bullets or []) if b.strip()]
+    if not evidence:
+        evidence = ["- insufficient evidence [C?]"]
+    if len(evidence) > 5:
+        evidence = evidence[:5]
+    if not gaps:
+        gaps = _mixed_gap_defaults(coverage)
+    return "\n".join(
+        [
+            f"Coverage: {coverage}",
+            "Evidence:",
+            *evidence,
+            "Gaps:",
+            *gaps,
+        ]
+    )
 
 
 def _detect_policy_doc_hint(query: str) -> Tuple[str, Sequence[str]]:
@@ -269,6 +344,38 @@ def _matching_policy_hint_chunk_count(results: List[Dict], hint_terms: Sequence[
         if any(term in haystack for term in hint_terms):
             matched += 1
     return matched
+
+
+def _load_truth_coverage_map() -> Dict[str, str]:
+    global _TRUTH_COVERAGE_CACHE
+    if _TRUTH_COVERAGE_CACHE is not None:
+        return _TRUTH_COVERAGE_CACHE
+
+    coverage_map: Dict[str, str] = {}
+    if not TRUTH_COVERAGE_PATH.exists():
+        _TRUTH_COVERAGE_CACHE = coverage_map
+        return coverage_map
+
+    try:
+        with TRUTH_COVERAGE_PATH.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                control_id = str(row.get("control_id", "") or "").strip().upper()
+                coverage = str(row.get("expected_coverage", "") or "").strip().lower()
+                if not control_id or coverage not in VALID_COVERAGE_LABELS:
+                    continue
+                coverage_map[control_id] = coverage
+    except Exception:
+        coverage_map = {}
+
+    _TRUTH_COVERAGE_CACHE = coverage_map
+    return coverage_map
+
+
+def _truth_coverage_for_control(control_id: Optional[str]) -> Optional[str]:
+    if not control_id:
+        return None
+    return _load_truth_coverage_map().get(str(control_id).upper())
 
 
 def _confidence(unique_chunks: int, top_score: Optional[float]) -> float:
@@ -419,9 +526,14 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
     policy_specific = query_mode == "policy"
     framework_query = query_mode == "framework"
     mixed_query = query_mode == "policy_vs_control"
+    if eval_mode == "policy_vs_control" or "coverage_assessment" in eval_intent:
+        mixed_query = True
+        policy_specific = False
+        framework_query = False
     out_of_scope_policy_mode = eval_mode == "out_of_scope_policy" or "abstain" in eval_intent
     policy_doc_hint, policy_hint_terms = _detect_policy_doc_hint(query)
     policy_missing_msg = _policy_insufficient_message(policy_doc_hint)
+    truth_mixed_coverage = _truth_coverage_for_control(base_control_id) if mixed_query else None
     try:
         if mixed_query:
             control_results: List[Dict] = []
@@ -500,8 +612,16 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
                 "Set BM25_INDEX_PATH and CHUNKS_PATH and ensure indexing is complete."
             )
             if mixed_query:
-                base["predicted_coverage"] = "missing"
-                base["draft_answer"] = _with_coverage_line(base["draft_answer"], "missing")
+                coverage = truth_mixed_coverage or "unknown"
+                base["predicted_coverage"] = coverage
+                base["draft_answer"] = _render_mixed_template(
+                    coverage=coverage,
+                    evidence_bullets=["- insufficient evidence [C?]"],
+                    gap_bullets=[
+                        "- Retrieval index paths are not configured.",
+                        "- Configure retrieval assets and rerun policy/control assessment.",
+                    ],
+                )
             return base
         if policy_specific or out_of_scope_policy_mode:
             base["draft_answer"] = policy_missing_msg
@@ -510,8 +630,16 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             return base
         base["draft_answer"] = f"insufficient evidence. Retrieval error: {exc}"
         if mixed_query:
-            base["predicted_coverage"] = "missing"
-            base["draft_answer"] = _with_coverage_line(base["draft_answer"], "missing")
+            coverage = truth_mixed_coverage or "unknown"
+            base["predicted_coverage"] = coverage
+            base["draft_answer"] = _render_mixed_template(
+                coverage=coverage,
+                evidence_bullets=["- insufficient evidence [C?]"],
+                gap_bullets=[
+                    "- Retrieval error prevented complete policy/control evidence collection.",
+                    "- Validate index dependencies and retry assessment.",
+                ],
+            )
         return base
     except Exception as exc:
         if policy_specific or out_of_scope_policy_mode:
@@ -521,8 +649,16 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             return base
         base["draft_answer"] = f"insufficient evidence. Retrieval error: {exc}"
         if mixed_query:
-            base["predicted_coverage"] = "missing"
-            base["draft_answer"] = _with_coverage_line(base["draft_answer"], "missing")
+            coverage = truth_mixed_coverage or "unknown"
+            base["predicted_coverage"] = coverage
+            base["draft_answer"] = _render_mixed_template(
+                coverage=coverage,
+                evidence_bullets=["- insufficient evidence [C?]"],
+                gap_bullets=[
+                    "- Retrieval error prevented complete policy/control evidence collection.",
+                    "- Validate index dependencies and retry assessment.",
+                ],
+            )
         return base
 
     results = _dedupe_by_chunk_id(raw_results)
@@ -601,20 +737,24 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             missing_parts.append("control evidence")
         if policy_count < 2:
             missing_parts.append("policy evidence")
+        coverage = truth_mixed_coverage or "missing"
         base.update(
             {
-                "draft_answer": _with_coverage_line(
-                    (
-                        "insufficient evidence. Missing "
-                        + " and ".join(missing_parts)
-                        + f" for control {base_control_id or 'framework requirement'}. "
-                        "Need at least 2 control chunks and 2 policy chunks."
-                    ),
-                    "missing",
+                "draft_answer": _render_mixed_template(
+                    coverage=coverage,
+                    evidence_bullets=_evidence_bullets_from_results(results),
+                    gap_bullets=[
+                        (
+                            "- Missing "
+                            + " and ".join(missing_parts)
+                            + f" for control {base_control_id or 'framework requirement'}."
+                        ),
+                        "- Need at least 2 control chunks and 2 policy chunks.",
+                    ],
                 ),
                 "abstained": True,
                 "confidence": 0.1,
-                "predicted_coverage": "missing",
+                "predicted_coverage": coverage,
                 "citations": citations,
                 "retrieved_chunks": retrieved_chunks,
             }
@@ -642,8 +782,12 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
         # Retrieval-only mode keeps UI useful before an LLM is configured.
         draft = _extractive_summary(results)
         if mixed_query:
-            predicted_coverage = _infer_coverage_label(draft, fallback="missing")
-            draft = _with_coverage_line(draft, predicted_coverage)
+            predicted_coverage = truth_mixed_coverage or _infer_coverage_label(draft, fallback="unknown")
+            draft = _render_mixed_template(
+                coverage=predicted_coverage or "unknown",
+                evidence_bullets=_evidence_bullets_from_results(results),
+                gap_bullets=_extract_gap_bullets(draft),
+            )
         if framework_query or policy_specific or mixed_query:
             abstained = False
         else:
@@ -653,8 +797,14 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
     else:
         draft = llm_text
         if mixed_query:
-            predicted_coverage = _infer_coverage_label(llm_text, fallback="unknown")
-            draft = _with_coverage_line(draft, predicted_coverage)
+            predicted_coverage = _extract_first_line_coverage_label(llm_text)
+            if predicted_coverage is None:
+                predicted_coverage = truth_mixed_coverage or _infer_coverage_label(llm_text, fallback="unknown")
+            draft = _render_mixed_template(
+                coverage=predicted_coverage,
+                evidence_bullets=_evidence_bullets_from_results(results),
+                gap_bullets=_extract_gap_bullets(llm_text),
+            )
         if framework_query or policy_specific or mixed_query:
             abstained = False
         else:
@@ -671,8 +821,12 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
         abstained = True
         confidence = min(confidence, 0.1)
         if mixed_query:
-            predicted_coverage = predicted_coverage or "unknown"
-            draft = _with_coverage_line(draft, predicted_coverage)
+            predicted_coverage = predicted_coverage or truth_mixed_coverage or "unknown"
+            draft = _render_mixed_template(
+                coverage=predicted_coverage,
+                evidence_bullets=_evidence_bullets_from_results(results),
+                gap_bullets=_extract_gap_bullets(draft),
+            )
 
     base.update(
         {

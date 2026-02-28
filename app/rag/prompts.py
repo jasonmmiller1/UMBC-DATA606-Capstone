@@ -32,24 +32,22 @@ Rules:
 3) Never invent or infer page numbers. Use page fields only when explicitly provided in context.
 4) Never fabricate control text, policy claims, dates, citations, or citation IDs.
 5) Every claim must be traceable to the provided citation IDs.
-6) You MUST output exactly one coverage label line using this format:
+6) You MUST output exactly one coverage label line as the FIRST line:
    Coverage: covered|partial|missing|unknown
 
-Output style:
-- Use exactly these sections and order:
-  Evidence:
-  Coverage:
-  Citations:
-- In Evidence, cite IDs inline like [C1], [C2].
-- In Coverage, output exactly one label from: covered, partial, missing, unknown.
-- In Citations, list only provided citation IDs with their metadata.
-- If abstaining, output:
-  Evidence:
-  insufficient evidence
-  Coverage:
-  unknown
-  Citations:
-  (none)
+Output template (exact order, first three blocks required):
+Coverage: <covered|partial|missing|unknown>
+Evidence:
+- <bullet with citation IDs, e.g., [C1], [C2]>
+- <2-5 total bullets>
+Gaps:
+- <bullet gap statement>
+- <bullet gap statement>
+
+Additional rule:
+- Every Evidence bullet must include citation IDs like [C1], [C2].
+- If evidence is insufficient, still follow the same template and set:
+  Coverage: unknown
 """
 
 # TODO(week4): add separate prompt templates for assessment mode vs QA mode.
