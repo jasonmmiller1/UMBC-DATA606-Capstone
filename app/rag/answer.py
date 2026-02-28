@@ -32,7 +32,18 @@ FRAMEWORK_QUERY_PHRASES = [
     "require",
     "requirements",
 ]
-MIXED_QUERY_HINTS = ["satisfy", "meet", "compare", "against", "align", "gap", "coverage"]
+MIXED_QUERY_HINTS = [
+    "satisfy",
+    "meet",
+    "compliant",
+    "compliance",
+    "compare",
+    "against",
+    "align",
+    "gap",
+    "gaps",
+    "coverage",
+]
 
 
 def _dedupe_by_chunk_id(results: List[Dict]) -> List[Dict]:
@@ -173,10 +184,19 @@ def is_framework_query(q: str) -> bool:
 
 def _is_mixed_query(q: str, has_control_id: bool) -> bool:
     text = (q or "").lower()
-    policy = is_policy_specific_query(q)
-    framework = is_framework_query(q) or has_control_id
+    has_our = "our" in text
     comparison = any(h in text for h in MIXED_QUERY_HINTS)
-    return policy and framework and comparison
+    return has_our and (has_control_id or comparison)
+
+
+def _classify_query_mode(q: str, has_control_id: bool) -> str:
+    if _is_mixed_query(q, has_control_id=has_control_id):
+        return "policy_vs_control"
+    if is_policy_specific_query(q):
+        return "policy"
+    if is_framework_query(q) or has_control_id:
+        return "framework"
+    return "general"
 
 
 def _retrieve_oscal_control_chunks(control_id: str, *, top_k: int = 10, collection: str = "rmf_chunks") -> List[Dict]:
@@ -263,13 +283,15 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
         "Please upload/ingest the relevant policy (e.g., Mobile Device / BYOD / Endpoint Security policy). "
         "If you meant the control requirement, ask: 'What does NIST 800-53 require for mobile devices?'"
     )
+    framework_missing_msg = "insufficient evidence. Missing control evidence for framework query."
 
     control_ids = extract_control_ids(query)
     base_control_id = control_ids[0].split("(", 1)[0] if control_ids else None
     is_control_query = base_control_id is not None
-    policy_specific = is_policy_specific_query(query)
-    framework_query = is_framework_query(query)
-    mixed_query = _is_mixed_query(query, has_control_id=is_control_query)
+    query_mode = _classify_query_mode(query, has_control_id=is_control_query)
+    policy_specific = query_mode == "policy"
+    framework_query = query_mode == "framework"
+    mixed_query = query_mode == "policy_vs_control"
     try:
         if mixed_query:
             control_results: List[Dict] = []
@@ -316,8 +338,8 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             except Exception:
                 policy_md_results = []
             raw_results = policy_results + policy_md_results
-        elif framework_query and not policy_specific:
-            # Framework requirement questions should use OSCAL-only evidence.
+        elif framework_query:
+            # Framework questions use OSCAL-only evidence.
             if is_control_query:
                 raw_results = _retrieve_oscal_control_chunks(
                     base_control_id,
@@ -330,23 +352,6 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
                     top_k=top_k,
                     source_type="oscal_control",
                 )
-        elif is_control_query:
-            control_results = _retrieve_oscal_control_chunks(
-                base_control_id,
-                top_k=6,
-                collection=collection,
-            )
-            policy_results = []
-            if chunks_path.exists() and bm25_path.exists():
-                try:
-                    policy_results = hybrid_search(
-                        query,
-                        top_k=max(top_k, 6),
-                        source_type="policy_pdf",
-                    )
-                except Exception:
-                    policy_results = []
-            raw_results = control_results + policy_results
         else:
             if not chunks_path.exists() or not bm25_path.exists():
                 base["draft_answer"] = "insufficient evidence. Retrieval assets are missing."
@@ -373,19 +378,15 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             for r in results
             if ((r.get("payload", {}) or {}).get("source_type") in {"policy_pdf", "policy_md"})
         ]
-    if mixed_query or is_control_query:
-        results = _cap_by_source(results, policy_limit=6, control_limit=6)
-    if framework_query and not policy_specific and not mixed_query:
+    elif framework_query:
         results = [
             r
             for r in results
             if ((r.get("payload", {}) or {}).get("source_type") == "oscal_control")
         ]
-    if not results and is_control_query:
-        base["draft_answer"] = (
-            f"insufficient evidence. No indexed OSCAL chunks found for control_id={base_control_id}."
-        )
-        return base
+    if mixed_query:
+        results = _cap_by_source(results, policy_limit=6, control_limit=6)
+
     citations = normalize_citations(results)
     retrieved_chunks = _to_retrieved_chunks(results)
 
@@ -393,10 +394,48 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
     top_score = float(results[0]["rrf_score"]) if results and results[0].get("rrf_score") is not None else None
     weak_retrieval = unique_count < MIN_UNIQUE_CHUNKS or (top_score is not None and top_score < MIN_TOP_SCORE)
     control_count, policy_count = _count_sources(results)
+    if framework_query and control_count < 1:
+        missing_msg = framework_missing_msg
+        if base_control_id:
+            missing_msg = (
+                "insufficient evidence. Missing control evidence for "
+                f"control {base_control_id}. Need at least 1 control chunk."
+            )
+        base.update(
+            {
+                "draft_answer": missing_msg,
+                "abstained": True,
+                "confidence": 0.1,
+                "citations": citations,
+                "retrieved_chunks": retrieved_chunks,
+            }
+        )
+        return base
     if policy_specific and policy_count < 2:
         base.update(
             {
                 "draft_answer": policy_missing_msg,
+                "abstained": True,
+                "confidence": 0.1,
+                "citations": citations,
+                "retrieved_chunks": retrieved_chunks,
+            }
+        )
+        return base
+    if mixed_query and (control_count < 2 or policy_count < 2):
+        missing_parts = []
+        if control_count < 2:
+            missing_parts.append("control evidence")
+        if policy_count < 2:
+            missing_parts.append("policy evidence")
+        base.update(
+            {
+                "draft_answer": (
+                    "insufficient evidence. Missing "
+                    + " and ".join(missing_parts)
+                    + f" for control {base_control_id or 'framework requirement'}. "
+                    "Need at least 2 control chunks and 2 policy chunks."
+                ),
                 "abstained": True,
                 "confidence": 0.1,
                 "citations": citations,
@@ -423,12 +462,18 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
     if llm_unavailable:
         # Retrieval-only mode keeps UI useful before an LLM is configured.
         draft = _extractive_summary(results)
-        abstained = False if is_control_query else weak_retrieval
+        if framework_query or policy_specific or mixed_query:
+            abstained = False
+        else:
+            abstained = weak_retrieval
         if abstained:
             draft = "insufficient evidence.\n" + draft
     else:
         draft = llm_text
-        abstained = False if is_control_query else (weak_retrieval or _is_insufficient_message(llm_text))
+        if framework_query or policy_specific or mixed_query:
+            abstained = False
+        else:
+            abstained = weak_retrieval or _is_insufficient_message(llm_text)
 
     if llm_error:
         if results:
@@ -440,43 +485,6 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             draft = "insufficient evidence. LLM temporarily unavailable and no evidence chunks were retrieved."
         abstained = True
         confidence = min(confidence, 0.1)
-
-    if mixed_query and not llm_error:
-        has_enough_control = control_count >= 2
-        has_enough_policy = policy_count >= 2
-        if has_enough_control and has_enough_policy:
-            abstained = False
-        else:
-            abstained = True
-            missing_parts = []
-            if not has_enough_control:
-                missing_parts.append("control evidence")
-            if not has_enough_policy:
-                missing_parts.append("policy evidence")
-            draft = (
-                "insufficient evidence. Missing "
-                + " and ".join(missing_parts)
-                + f" for control {base_control_id or 'framework requirement'}. "
-                "Need at least 2 control chunks and 2 policy chunks."
-            )
-    elif is_control_query and not llm_error:
-        has_enough_control = control_count >= 2
-        has_enough_policy = policy_count >= 2
-        if has_enough_control and has_enough_policy:
-            abstained = False
-        else:
-            abstained = True
-            missing_parts = []
-            if not has_enough_control:
-                missing_parts.append("control evidence")
-            if not has_enough_policy:
-                missing_parts.append("policy evidence")
-            draft = (
-                "insufficient evidence. Missing "
-                + " and ".join(missing_parts)
-                + f" for control {base_control_id}. "
-                "Need at least 2 control chunks and 2 policy chunks."
-            )
 
     base.update(
         {
