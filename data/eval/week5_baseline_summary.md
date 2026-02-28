@@ -1,6 +1,6 @@
 # Week 5 Baseline Evaluation Summary
 
-- Generated (UTC): 2026-02-28 21:43:40
+- Generated (UTC): 2026-02-28 22:04:01
 - Input: `/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/golden_questions.jsonl`
 - Results JSONL: `/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week5_baseline_results.jsonl`
 - Requested engine mode: `auto`

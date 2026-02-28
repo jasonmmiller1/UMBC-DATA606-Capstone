@@ -519,14 +519,23 @@ def _count_sources(results: List[Dict]) -> tuple[int, int]:
     return control_count, policy_count
 
 
-def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -> dict:
+def answer_question(
+    query: str,
+    *,
+    scope: dict | None = None,
+    top_k: int = 10,
+    eval_mode: Optional[str] = None,
+    eval_intent: Optional[str] = None,
+    expected: Optional[Dict] = None,
+) -> dict:
     scope = scope or {}
     collection = scope.get("collection", "rmf_chunks")
-    eval_mode = str(scope.get("mode", "") or "").lower()
-    eval_intent = str(scope.get("intent", "") or "").lower()
-    eval_expected_coverage = str(scope.get("expected_coverage", "") or "").strip().lower()
-
-    llm_client = get_llm_client()
+    eval_mode = str(eval_mode or scope.get("mode", "") or "").lower()
+    eval_intent = str(eval_intent or scope.get("intent", "") or "").lower()
+    expected = expected or {}
+    eval_expected_coverage = str(
+        expected.get("expected_coverage", scope.get("expected_coverage", "")) or ""
+    ).strip().lower()
 
     repo_root = Path(__file__).resolve().parents[2]
     chunks_path = repo_root / "data/index/chunks.parquet"
@@ -615,6 +624,8 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
             }
         )
         return base
+
+    llm_client = get_llm_client()
 
     try:
         if mixed_query:

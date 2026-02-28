@@ -214,11 +214,9 @@ def _run_one(
             response = answer_question(
                 question,
                 top_k=top_k,
-                scope={
-                    "mode": mode,
-                    "intent": intent,
-                    "expected_coverage": expected_coverage,
-                },
+                eval_mode=mode,
+                eval_intent=intent,
+                expected=expected,
             )
     except Exception as exc:
         error = str(exc)
