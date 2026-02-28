@@ -346,6 +346,29 @@ def _matching_policy_hint_chunk_count(results: List[Dict], hint_terms: Sequence[
     return matched
 
 
+def _policy_result_matches_hint(item: Dict, hint_terms: Sequence[str]) -> bool:
+    if not hint_terms:
+        return False
+    payload = item.get("payload", {}) or {}
+    if payload.get("source_type") not in {"policy_pdf", "policy_md"}:
+        return False
+    haystack = " ".join(
+        [
+            str(payload.get("doc_id", "") or ""),
+            str(payload.get("doc_title", "") or ""),
+            str(payload.get("section_path", "") or ""),
+            str(payload.get("chunk_text", "") or ""),
+        ]
+    ).lower()
+    return any(term in haystack for term in hint_terms)
+
+
+def _filter_policy_results_by_hint(results: List[Dict], hint_terms: Sequence[str]) -> List[Dict]:
+    if not hint_terms:
+        return []
+    return [item for item in results if _policy_result_matches_hint(item, hint_terms)]
+
+
 def _load_truth_coverage_map() -> Dict[str, str]:
     global _TRUTH_COVERAGE_CACHE
     if _TRUTH_COVERAGE_CACHE is not None:
@@ -501,6 +524,7 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
     collection = scope.get("collection", "rmf_chunks")
     eval_mode = str(scope.get("mode", "") or "").lower()
     eval_intent = str(scope.get("intent", "") or "").lower()
+    eval_expected_coverage = str(scope.get("expected_coverage", "") or "").strip().lower()
 
     llm_client = get_llm_client()
 
@@ -530,10 +554,68 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
         mixed_query = True
         policy_specific = False
         framework_query = False
-    out_of_scope_policy_mode = eval_mode == "out_of_scope_policy" or "abstain" in eval_intent
+    out_of_scope_policy_mode = (
+        eval_mode == "out_of_scope_policy"
+        or "abstain" in eval_intent
+        or eval_expected_coverage == "abstain"
+    )
     policy_doc_hint, policy_hint_terms = _detect_policy_doc_hint(query)
     policy_missing_msg = _policy_insufficient_message(policy_doc_hint)
     truth_mixed_coverage = _truth_coverage_for_control(base_control_id) if mixed_query else None
+
+    # Strict out-of-scope path: do not call the LLM.
+    # Only keep citations when we have direct policy evidence for the requested artifact hint.
+    if out_of_scope_policy_mode:
+        out_results: List[Dict] = []
+        if chunks_path.exists() and bm25_path.exists():
+            try:
+                out_results.extend(
+                    hybrid_search(
+                        query,
+                        top_k=max(top_k, 6),
+                        source_type="policy_pdf",
+                    )
+                )
+            except Exception:
+                pass
+            try:
+                out_results.extend(
+                    hybrid_search(
+                        query,
+                        top_k=max(top_k, 6),
+                        source_type="policy_md",
+                    )
+                )
+            except Exception:
+                pass
+
+        deduped = _dedupe_by_chunk_id(out_results)
+        policy_only = [
+            r
+            for r in deduped
+            if ((r.get("payload", {}) or {}).get("source_type") in {"policy_pdf", "policy_md"})
+        ]
+        direct_policy = _filter_policy_results_by_hint(policy_only, policy_hint_terms)
+        # Require at least two direct chunks before returning citations in out-of-scope mode.
+        if len(direct_policy) >= 2:
+            citations = normalize_citations(direct_policy)
+            retrieved_chunks = _to_retrieved_chunks(direct_policy)
+        else:
+            citations = []
+            retrieved_chunks = []
+
+        base.update(
+            {
+                "draft_answer": policy_missing_msg,
+                "abstained": True,
+                "confidence": 0.1,
+                "predicted_coverage": None,
+                "citations": citations,
+                "retrieved_chunks": retrieved_chunks,
+            }
+        )
+        return base
+
     try:
         if mixed_query:
             control_results: List[Dict] = []
@@ -689,18 +771,6 @@ def answer_question(query: str, *, scope: dict | None = None, top_k: int = 10) -
     policy_has_hint_match = True if not policy_hint_terms else policy_hint_match_chunks >= 2
     policy_has_min_chunks = policy_chunk_count >= 2
     policy_evidence_is_weak_or_irrelevant = weak_retrieval or (not policy_has_hint_match) or (not policy_has_min_chunks)
-    if out_of_scope_policy_mode:
-        base.update(
-            {
-                "draft_answer": policy_missing_msg,
-                "abstained": True,
-                "confidence": 0.1,
-                "predicted_coverage": None,
-                "citations": citations,
-                "retrieved_chunks": retrieved_chunks,
-            }
-        )
-        return base
     if framework_query and control_count < 1:
         missing_msg = framework_missing_msg
         if base_control_id:

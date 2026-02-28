@@ -217,6 +217,7 @@ def _run_one(
                 scope={
                     "mode": mode,
                     "intent": intent,
+                    "expected_coverage": expected_coverage,
                 },
             )
     except Exception as exc:
