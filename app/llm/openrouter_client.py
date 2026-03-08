@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
 import os
 import time
 from typing import Any, Dict, List
 
 import requests
+
+
+logger = logging.getLogger(__name__)
 
 
 class OpenRouterLLMClient:
@@ -16,6 +20,8 @@ class OpenRouterLLMClient:
     """
 
     endpoint = "https://openrouter.ai/api/v1/chat/completions"
+    default_retry_count = 2
+    retry_backoff_seconds = 0.5
     default_fallback_models = [
         "nvidia/nemotron-nano-9b-v2:free",
         "google/gemma-3-12b-it:free",
@@ -66,6 +72,16 @@ class OpenRouterLLMClient:
             lines.append(f"{meta}\n{text[:1000]}")
         return "\n\n".join(lines)
 
+    def _retry_count(self, **kwargs: Any) -> int:
+        if "retry_count" in kwargs:
+            raw = str(kwargs.get("retry_count", self.default_retry_count))
+        else:
+            raw = os.getenv("OPENROUTER_RETRY_COUNT", str(self.default_retry_count))
+        try:
+            return max(0, int(raw))
+        except (TypeError, ValueError):
+            return self.default_retry_count
+
     def generate(self, system: str, user: str, context: List[Dict], **kwargs: Any) -> str:
         try:
             if not self.api_key:
@@ -74,6 +90,7 @@ class OpenRouterLLMClient:
             temperature = float(kwargs.get("temperature", 0.2))
             max_tokens = int(kwargs.get("max_tokens", 600))
             timeout = float(kwargs.get("timeout", 60))
+            retry_count = self._retry_count(**kwargs)
 
             context_block = self._format_context(context)
             user_content = (
@@ -96,104 +113,249 @@ class OpenRouterLLMClient:
                 if m and m not in model_candidates:
                     model_candidates.append(m)
 
-            max_attempts = min(3, len(model_candidates))
             last_status: int | None = None
             last_msg = ""
+            last_model = ""
+            any_retry = False
 
-            for attempt in range(max_attempts):
-                model_name = model_candidates[attempt]
-                payload = {
-                    "model": model_name,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": user_content},
-                    ],
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                }
+            for model_index, model_name in enumerate(model_candidates):
+                last_model = model_name
+                retried_for_model = False
+                attempts_for_model = retry_count + 1
 
-                try:
-                    resp = requests.post(
-                        self.endpoint,
-                        headers=headers,
-                        json=payload,
-                        timeout=timeout,
-                    )
-                except requests.RequestException as exc:
-                    last_status = None
-                    last_msg = str(exc)
-                    if attempt < max_attempts - 1:
-                        time.sleep(0.5 * (2**attempt))
-                        continue
-                    return f"OpenRouter error: request failed: {exc}"
+                for attempt in range(attempts_for_model):
+                    is_retry = attempt > 0
+                    retried_for_model = retried_for_model or is_retry
+                    any_retry = any_retry or is_retry
 
-                response_text = resp.text or ""
-                body_text = response_text[:200]
+                    payload = {
+                        "model": model_name,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user_content},
+                        ],
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                    }
 
-                try:
-                    data = resp.json()
-                except ValueError:
-                    return f"OpenRouter error: non-JSON response (code={resp.status_code})"
+                    try:
+                        resp = requests.post(
+                            self.endpoint,
+                            headers=headers,
+                            json=payload,
+                            timeout=timeout,
+                        )
+                    except requests.RequestException as exc:
+                        last_status = None
+                        last_msg = str(exc)
+                        should_retry = attempt < retry_count
+                        if should_retry:
+                            logger.warning(
+                                "OpenRouter transient request failure model=%s attempt=%d/%d retrying: %s",
+                                model_name,
+                                attempt + 1,
+                                attempts_for_model,
+                                exc,
+                            )
+                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            continue
+                        logger.warning(
+                            "OpenRouter request failure model=%s retries_exhausted=%s switching_model=%s error=%s",
+                            model_name,
+                            retried_for_model,
+                            model_index < (len(model_candidates) - 1),
+                            exc,
+                        )
+                        break
 
-                if isinstance(data, dict) and "error" in data:
-                    err = data.get("error") or {}
-                    if isinstance(err, dict):
-                        err_msg = str(err.get("message", "unknown error"))
-                        err_code = err.get("code")
+                    response_text = resp.text or ""
+                    body_text = response_text[:200]
+
+                    if not response_text.strip():
+                        last_status = resp.status_code
+                        last_msg = "empty response body"
+                        should_retry = attempt < retry_count
+                        if should_retry:
+                            logger.warning(
+                                "OpenRouter transient empty body model=%s status=%s attempt=%d/%d retrying",
+                                model_name,
+                                resp.status_code,
+                                attempt + 1,
+                                attempts_for_model,
+                            )
+                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            continue
+                        logger.warning(
+                            "OpenRouter empty body model=%s retries_exhausted=%s switching_model=%s",
+                            model_name,
+                            retried_for_model,
+                            model_index < (len(model_candidates) - 1),
+                        )
+                        break
+
+                    try:
+                        data = resp.json()
+                    except ValueError:
+                        last_status = resp.status_code
+                        last_msg = "non-JSON response"
+                        # Non-JSON is not classified as transient by default.
+                        break
+
+                    if isinstance(data, dict) and "error" in data:
+                        err = data.get("error") or {}
+                        if isinstance(err, dict):
+                            err_msg = str(err.get("message", "unknown error"))
+                            err_code = err.get("code")
+                        else:
+                            err_msg = str(err)
+                            err_code = None
+                        error_line = f"OpenRouter error: {err_msg} (code={err_code})"
+
+                        if resp.status_code in (401, 403):
+                            return "OpenRouter error: unauthorized (check OPENROUTER_API_KEY and model access)."
+
+                        is_transient_error = resp.status_code in {429, 502}
+                        last_status = resp.status_code
+                        last_msg = err_msg
+                        should_retry = is_transient_error and attempt < retry_count
+                        if should_retry:
+                            logger.warning(
+                                "OpenRouter transient provider error model=%s status=%s attempt=%d/%d retrying: %s",
+                                model_name,
+                                resp.status_code,
+                                attempt + 1,
+                                attempts_for_model,
+                                err_msg,
+                            )
+                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            continue
+                        if is_transient_error:
+                            logger.warning(
+                                "OpenRouter transient error retries exhausted model=%s status=%s switching_model=%s",
+                                model_name,
+                                resp.status_code,
+                                model_index < (len(model_candidates) - 1),
+                            )
+                            break
+                        if model_index < (len(model_candidates) - 1):
+                            logger.warning(
+                                "OpenRouter provider error model=%s status=%s switching to fallback model: %s",
+                                model_name,
+                                resp.status_code,
+                                err_msg,
+                            )
+                            break
+                        return error_line
+
+                    if resp.status_code in (401, 403):
+                        return "OpenRouter error: unauthorized (check OPENROUTER_API_KEY and model access)."
+
+                    if resp.status_code in {429, 502}:
+                        last_status = resp.status_code
+                        last_msg = body_text
+                        should_retry = attempt < retry_count
+                        if should_retry:
+                            logger.warning(
+                                "OpenRouter transient HTTP status model=%s status=%s attempt=%d/%d retrying",
+                                model_name,
+                                resp.status_code,
+                                attempt + 1,
+                                attempts_for_model,
+                            )
+                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            continue
+                        logger.warning(
+                            "OpenRouter transient status retries exhausted model=%s status=%s switching_model=%s",
+                            model_name,
+                            resp.status_code,
+                            model_index < (len(model_candidates) - 1),
+                        )
+                        break
+
+                    choices = data.get("choices") if isinstance(data, dict) else None
+                    if not isinstance(choices, list) or not choices:
+                        last_status = resp.status_code
+                        last_msg = "missing choices"
+                        should_retry = attempt < retry_count
+                        if should_retry:
+                            logger.warning(
+                                "OpenRouter transient malformed response model=%s attempt=%d/%d retrying: missing choices",
+                                model_name,
+                                attempt + 1,
+                                attempts_for_model,
+                            )
+                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            continue
+                        logger.warning(
+                            "OpenRouter malformed response retries exhausted model=%s switching_model=%s",
+                            model_name,
+                            model_index < (len(model_candidates) - 1),
+                        )
+                        break
+                    first = choices[0] if isinstance(choices[0], dict) else None
+                    msg = first.get("message") if isinstance(first, dict) else None
+                    content = msg.get("content") if isinstance(msg, dict) else None
+                    if content is None:
+                        last_status = resp.status_code
+                        last_msg = "missing content"
+                        should_retry = attempt < retry_count
+                        if should_retry:
+                            logger.warning(
+                                "OpenRouter transient malformed response model=%s attempt=%d/%d retrying: missing content",
+                                model_name,
+                                attempt + 1,
+                                attempts_for_model,
+                            )
+                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            continue
+                        logger.warning(
+                            "OpenRouter malformed content retries exhausted model=%s switching_model=%s",
+                            model_name,
+                            model_index < (len(model_candidates) - 1),
+                        )
+                        break
+
+                    if resp.status_code != 200:
+                        # Non-transient non-200 response.
+                        last_status = resp.status_code
+                        last_msg = body_text
+                        if model_index < (len(model_candidates) - 1):
+                            logger.warning(
+                                "OpenRouter non-200 response model=%s status=%s switching to fallback model",
+                                model_name,
+                                resp.status_code,
+                            )
+                            break
+                        return f"OpenRouter error: status={resp.status_code}, message={body_text}"
+
+                    if isinstance(content, list):
+                        # Some providers return content parts. Flatten text parts conservatively.
+                        text_parts = []
+                        for part in content:
+                            if isinstance(part, dict) and part.get("type") == "text":
+                                text_parts.append(str(part.get("text", "")))
+                        output = "\n".join([p for p in text_parts if p]).strip() or str(content)
                     else:
-                        err_msg = str(err)
-                        err_code = None
-                    error_line = f"OpenRouter error: {err_msg} (code={err_code})"
+                        output = str(content).strip()
 
-                    # Retry on explicit rate-limit signals only.
-                    low = err_msg.lower()
-                    rate_limited = (
-                        resp.status_code == 429
-                        or "rate limit" in low
-                        or "too many requests" in low
+                    logger.info(
+                        "OpenRouter success model=%s used_fallback=%s retried=%s attempts=%d",
+                        model_name,
+                        model_index > 0,
+                        retried_for_model,
+                        attempt + 1,
                     )
-                    last_status = resp.status_code
-                    last_msg = err_msg
-                    if rate_limited and attempt < max_attempts - 1:
-                        time.sleep(0.5 * (2**attempt))
-                        continue
-                    return error_line
-
-                if resp.status_code in (401, 403):
-                    return "OpenRouter error: unauthorized (check OPENROUTER_API_KEY and model access)."
-
-                choices = data.get("choices") if isinstance(data, dict) else None
-                if not isinstance(choices, list) or not choices:
-                    return (
-                        "OpenRouter error: malformed response "
-                        f"(missing choices/message/content, code={resp.status_code})"
-                    )
-                first = choices[0] if isinstance(choices[0], dict) else None
-                msg = first.get("message") if isinstance(first, dict) else None
-                content = msg.get("content") if isinstance(msg, dict) else None
-                if content is None:
-                    return (
-                        "OpenRouter error: malformed response "
-                        f"(missing choices/message/content, code={resp.status_code})"
-                    )
-
-                if resp.status_code != 200:
-                    # Non-200 but parseable response without explicit error block.
-                    last_status = resp.status_code
-                    last_msg = body_text
-                    return f"OpenRouter error: status={resp.status_code}, message={body_text}"
-
-                if isinstance(content, list):
-                    # Some providers return content parts. Flatten text parts conservatively.
-                    text_parts = []
-                    for part in content:
-                        if isinstance(part, dict) and part.get("type") == "text":
-                            text_parts.append(str(part.get("text", "")))
-                    return "\n".join([p for p in text_parts if p]).strip() or str(content)
-                return str(content).strip()
+                    return output
 
             status_str = str(last_status) if last_status is not None else "n/a"
             msg = (last_msg or "unknown provider error").strip()
+            logger.error(
+                "OpenRouter failed after retries and fallbacks last_model=%s last_status=%s retried=%s error=%s",
+                last_model or "n/a",
+                status_str,
+                any_retry,
+                msg,
+            )
             return f"OpenRouter error: status={status_str}, message={msg}"
         except Exception as exc:
             return f"OpenRouter error: unexpected failure ({exc})"

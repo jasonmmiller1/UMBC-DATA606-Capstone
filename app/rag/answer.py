@@ -519,6 +519,28 @@ def _count_sources(results: List[Dict]) -> tuple[int, int]:
     return control_count, policy_count
 
 
+def _has_sufficient_evidence_for_intent(
+    *,
+    results: List[Dict],
+    weak_retrieval: bool,
+    framework_query: bool,
+    policy_specific: bool,
+    mixed_query: bool,
+    control_count: int,
+    policy_count: int,
+    policy_evidence_is_weak_or_irrelevant: bool,
+) -> bool:
+    if not results:
+        return False
+    if framework_query:
+        return control_count >= 1
+    if policy_specific:
+        return not policy_evidence_is_weak_or_irrelevant
+    if mixed_query:
+        return control_count >= 2 and policy_count >= 2
+    return not weak_retrieval
+
+
 def answer_question(
     query: str,
     *,
@@ -850,14 +872,17 @@ def answer_question(
         f"Context:\n{_context_block(llm_context, max_chunks=MAX_LLM_CONTEXT_CHUNKS)}"
     )
     system_prompt = GROUNDED_POLICY_VS_CONTROL_PROMPT if mixed_query else GROUNDED_SYSTEM_PROMPT
-    llm_text = llm_client.generate(
-        system=system_prompt,
-        user=user_prompt,
-        context=llm_context,
-    )
+    try:
+        llm_text = llm_client.generate(
+            system=system_prompt,
+            user=user_prompt,
+            context=llm_context,
+        )
+    except Exception as exc:
+        llm_text = f"OpenRouter error: {exc}"
 
     llm_unavailable = llm_text.startswith("LLM not configured") or llm_text.startswith("OpenRouter backend selected")
-    llm_error = llm_text.startswith("OpenRouter error:")
+    llm_error = llm_text.startswith("OpenRouter error:") or llm_text.startswith("LLM error:")
     predicted_coverage: Optional[str] = None
     if llm_unavailable:
         # Retrieval-only mode keeps UI useful before an LLM is configured.
@@ -892,6 +917,16 @@ def answer_question(
             abstained = weak_retrieval or _is_insufficient_message(llm_text)
 
     if llm_error:
+        evidence_sufficient = _has_sufficient_evidence_for_intent(
+            results=results,
+            weak_retrieval=weak_retrieval,
+            framework_query=framework_query,
+            policy_specific=policy_specific,
+            mixed_query=mixed_query,
+            control_count=control_count,
+            policy_count=policy_count,
+            policy_evidence_is_weak_or_irrelevant=policy_evidence_is_weak_or_irrelevant,
+        )
         if results:
             draft = (
                 "LLM temporarily unavailable. Showing retrieved evidence excerpts.\n\n"
@@ -899,15 +934,20 @@ def answer_question(
             )
         else:
             draft = "insufficient evidence. LLM temporarily unavailable and no evidence chunks were retrieved."
-        abstained = True
-        confidence = min(confidence, 0.1)
+        if evidence_sufficient:
+            abstained = False
+            confidence = 0.1
+        else:
+            abstained = True
+            confidence = min(confidence, 0.1)
         if mixed_query:
             predicted_coverage = predicted_coverage or truth_mixed_coverage or "unknown"
-            draft = _render_mixed_template(
-                coverage=predicted_coverage,
-                evidence_bullets=_evidence_bullets_from_results(results),
-                gap_bullets=_extract_gap_bullets(draft),
-            )
+            if not evidence_sufficient:
+                draft = _render_mixed_template(
+                    coverage=predicted_coverage,
+                    evidence_bullets=_evidence_bullets_from_results(results),
+                    gap_bullets=_extract_gap_bullets(draft),
+                )
 
     base.update(
         {
