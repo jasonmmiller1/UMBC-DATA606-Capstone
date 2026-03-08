@@ -5,8 +5,6 @@ import argparse
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 
-from app.utils.embeddings import embed_texts
-
 
 DEFAULT_COLLECTION = "rmf_chunks"
 
@@ -42,7 +40,13 @@ def main() -> None:
     parser.add_argument("--vector-size", type=int, default=None)
     args = parser.parse_args()
 
-    vector_size = args.vector_size or int(embed_texts(["dimension probe"]).shape[1])
+    if args.vector_size is not None:
+        vector_size = args.vector_size
+    else:
+        # Lazy import keeps callers that only need ensure_collection lightweight.
+        from app.utils.embeddings import embed_texts
+
+        vector_size = int(embed_texts(["dimension probe"]).shape[1])
     client = QdrantClient(host=args.host, port=args.port)
     ensure_collection(client, args.collection, vector_size)
     print(

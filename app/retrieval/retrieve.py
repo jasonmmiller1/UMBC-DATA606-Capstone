@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -16,6 +17,28 @@ from app.utils.embeddings import embed_texts
 
 
 CONTROL_QUERY_RE = re.compile(r"^[A-Za-z]{2,3}-\d+([(.]\d+[)]?)?$")
+SECTION_TYPES = {
+    "purpose",
+    "scope",
+    "definitions",
+    "exceptions",
+    "policy",
+    "procedures",
+    "requirements",
+    "retention",
+    "roles",
+    "controls",
+    "other",
+}
+LOW_SIGNAL_SECTION_TYPES = {"purpose", "scope", "definitions", "exceptions"}
+HIGH_SIGNAL_SECTION_TYPES = {"procedures", "requirements", "retention", "roles", "policy"}
+POLICY_SOURCE_TYPES = {"policy_pdf", "policy_md"}
+SECTION_TYPE_QUERY_HINTS: Dict[str, Tuple[str, ...]] = {
+    "purpose": ("purpose",),
+    "scope": ("scope",),
+    "definitions": ("definition", "definitions", "glossary", "terminology"),
+    "exceptions": ("exception", "exceptions"),
+}
 
 
 def build_qdrant_filter(
@@ -94,6 +117,89 @@ def _chunks_lookup(chunks_path: Path) -> Dict[str, Dict]:
     return {str(r["chunk_id"]): r for r in df.to_dict(orient="records")}
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name, "")
+    if not value.strip():
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name, "")
+    if not value.strip():
+        return default
+    try:
+        return float(value.strip())
+    except ValueError:
+        return default
+
+
+def _infer_section_type_from_heading(heading: str) -> str:
+    text = (heading or "").strip().lower()
+    if not text:
+        return "other"
+    if "purpose" in text:
+        return "purpose"
+    if "scope" in text:
+        return "scope"
+    if "definition" in text or "glossary" in text or "terminology" in text or "terms" in text:
+        return "definitions"
+    if "exception" in text:
+        return "exceptions"
+    if "procedur" in text or "process" in text or "workflow" in text:
+        return "procedures"
+    if "retention" in text:
+        return "retention"
+    if "role" in text or "responsibilit" in text:
+        return "roles"
+    if "requirement" in text or "shall" in text:
+        return "requirements"
+    if "control" in text or "mapping" in text:
+        return "controls"
+    if "policy" in text or "statement" in text or "standard" in text:
+        return "policy"
+    return "other"
+
+
+def _section_type_from_payload(payload: Dict) -> str:
+    raw = str(payload.get("section_type", "") or "").strip().lower()
+    if raw in SECTION_TYPES:
+        return raw
+
+    heading = str(payload.get("heading", "") or payload.get("section_path", "") or "")
+    inferred = _infer_section_type_from_heading(heading)
+    return inferred if inferred in SECTION_TYPES else "other"
+
+
+def _query_requests_low_signal_section(query: str, section_type: str) -> bool:
+    hints = SECTION_TYPE_QUERY_HINTS.get(section_type, ())
+    if not hints:
+        return False
+    query_lower = (query or "").lower()
+    return any(term in query_lower for term in hints)
+
+
+def _policy_section_multiplier(query: str, payload: Dict) -> float:
+    if not _env_bool("RETRIEVAL_POLICY_SECTION_WEIGHTING_ENABLED", True):
+        return 1.0
+
+    source_type = str(payload.get("source_type", "") or "").strip().lower()
+    if source_type not in POLICY_SOURCE_TYPES:
+        return 1.0
+
+    section_type = _section_type_from_payload(payload)
+    low_signal_multiplier = _env_float("RETRIEVAL_POLICY_LOW_SIGNAL_MULTIPLIER", 0.6)
+    high_signal_multiplier = _env_float("RETRIEVAL_POLICY_HIGH_SIGNAL_MULTIPLIER", 1.1)
+
+    if section_type in LOW_SIGNAL_SECTION_TYPES:
+        if _query_requests_low_signal_section(query, section_type):
+            return 1.0
+        return low_signal_multiplier
+    if section_type in HIGH_SIGNAL_SECTION_TYPES:
+        return high_signal_multiplier
+    return 1.0
+
+
 def hybrid_retrieve(
     query: str,
     client: QdrantClient,
@@ -126,21 +232,34 @@ def hybrid_retrieve(
 
     dense_ids = [h["chunk_id"] for h in dense_hits]
     bm25_ids = [cid for cid, _ in bm25_hits]
-    fused = rrf_fuse(dense_ids, bm25_ids, k=rrf_k)[:top_k]
+    fused = rrf_fuse(dense_ids, bm25_ids, k=rrf_k)
 
-    dense_payload_map = {h["chunk_id"]: h["payload"] for h in dense_hits}
+    dense_payload_map = {h["chunk_id"]: (h.get("payload") or {}) for h in dense_hits}
     dense_score_map = {h["chunk_id"]: h["score"] for h in dense_hits}
     bm25_score_map = {cid: score for cid, score in bm25_hits}
     chunk_map = _chunks_lookup(chunks_path)
 
+    weighted: List[Tuple[str, float, float, float]] = []
+    for chunk_id, fused_score in fused:
+        payload = dict(chunk_map.get(chunk_id, {}))
+        payload.update(dense_payload_map.get(chunk_id, {}))
+        multiplier = _policy_section_multiplier(query, payload)
+        weighted_score = float(fused_score) * float(multiplier)
+        weighted.append((chunk_id, weighted_score, float(multiplier), float(fused_score)))
+    weighted.sort(key=lambda item: (item[1], item[3], item[0]), reverse=True)
+    weighted = weighted[:top_k]
+
     results: List[Dict] = []
-    for rank, (chunk_id, fused_score) in enumerate(fused, start=1):
-        payload = dense_payload_map.get(chunk_id, chunk_map.get(chunk_id, {}))
+    for rank, (chunk_id, fused_score, section_multiplier, base_rrf_score) in enumerate(weighted, start=1):
+        payload = dict(chunk_map.get(chunk_id, {}))
+        payload.update(dense_payload_map.get(chunk_id, {}))
         results.append(
             {
                 "rank": rank,
                 "chunk_id": chunk_id,
                 "rrf_score": fused_score,
+                "base_rrf_score": base_rrf_score,
+                "policy_section_multiplier": section_multiplier,
                 "dense_score": dense_score_map.get(chunk_id),
                 "bm25_score": bm25_score_map.get(chunk_id),
                 "payload": payload,

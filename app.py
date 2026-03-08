@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -10,16 +11,7 @@ import uuid
 from typing import Dict, List
 
 import pandas as pd
-from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct
 import streamlit as st
-
-from app.index.bm25_index import build_index
-from app.index.qdrant_schema import DEFAULT_COLLECTION, ensure_collection
-from app.rag.answer import answer_question
-from app.rag.citations import format_citations_markdown
-from app.utils.embeddings import embed_texts
-
 
 REPO_ROOT = Path(__file__).resolve().parent
 DATA_DIR = REPO_ROOT / "data"
@@ -28,6 +20,11 @@ UPLOAD_MD_DIR = DATA_DIR / "uploads_md"
 INDEX_DIR = DATA_DIR / "index"
 CHUNKS_PATH = INDEX_DIR / "chunks.parquet"
 BM25_DIR = DATA_DIR / "bm25_index"
+QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
+QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+QDRANT_TIMEOUT = float(os.getenv("QDRANT_TIMEOUT", "0.75"))
+QDRANT_STATUS_ENABLED = os.getenv("QDRANT_STATUS_ENABLED", "0").strip().lower() not in {"0", "false", "no"}
+DEFAULT_COLLECTION = os.getenv("QDRANT_COLLECTION", "rmf_chunks")
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
 CHUNK_ID_NAMESPACE = uuid.UUID("49b7b7f2-1291-4ed5-a4b6-b68de66f7b8e")
@@ -140,7 +137,14 @@ def _uploaded_to_chunks_df(uploaded_files) -> tuple[pd.DataFrame, int]:
 def _upsert_chunks_to_qdrant(chunks_df: pd.DataFrame) -> int:
     if chunks_df.empty:
         return 0
-    client = QdrantClient(host="localhost", port=6333)
+    # Lazy imports reduce first-render startup work for the Streamlit app.
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import PointStruct
+
+    from app.index.qdrant_schema import ensure_collection
+    from app.utils.embeddings import embed_texts
+
+    client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=QDRANT_TIMEOUT)
     probe = embed_texts([chunks_df.iloc[0]["chunk_text"]])
     vector_size = int(probe.shape[1])
     ensure_collection(client, DEFAULT_COLLECTION, vector_size)
@@ -165,6 +169,8 @@ def _upsert_chunks_to_qdrant(chunks_df: pd.DataFrame) -> int:
 
 
 def _merge_chunks_and_rebuild_bm25(new_chunks_df: pd.DataFrame) -> int:
+    from app.index.bm25_index import build_index
+
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
     if CHUNKS_PATH.exists():
         base_df = pd.read_parquet(CHUNKS_PATH)
@@ -179,21 +185,39 @@ def _merge_chunks_and_rebuild_bm25(new_chunks_df: pd.DataFrame) -> int:
     return len(combined)
 
 
+def _count_parquet_rows(path: Path) -> int:
+    if not path.exists():
+        return 0
+    try:
+        import pyarrow.parquet as pq
+
+        pf = pq.ParquetFile(path)
+        return int((pf.metadata.num_rows if pf.metadata is not None else 0) or 0)
+    except Exception:
+        try:
+            return len(pd.read_parquet(path, columns=["chunk_id"]))
+        except Exception:
+            return 0
+
+
+@st.cache_data(ttl=15, show_spinner=False)
 def _status_snapshot() -> Dict[str, int]:
     chunks_count = 0
-    if CHUNKS_PATH.exists():
-        try:
-            chunks_count = len(pd.read_parquet(CHUNKS_PATH))
-        except Exception:
-            chunks_count = 0
+    try:
+        chunks_count = _count_parquet_rows(CHUNKS_PATH)
+    except Exception:
+        chunks_count = 0
 
     qdrant_points = 0
-    try:
-        client = QdrantClient(host="localhost", port=6333)
-        info = client.get_collection(DEFAULT_COLLECTION)
-        qdrant_points = int(getattr(info, "points_count", 0) or 0)
-    except Exception:
-        qdrant_points = 0
+    if QDRANT_STATUS_ENABLED:
+        try:
+            from qdrant_client import QdrantClient
+
+            client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=QDRANT_TIMEOUT)
+            info = client.get_collection(DEFAULT_COLLECTION)
+            qdrant_points = int(getattr(info, "points_count", 0) or 0)
+        except Exception:
+            qdrant_points = 0
 
     docs_count = 0
     if UPLOAD_MD_DIR.exists():
@@ -229,12 +253,25 @@ with st.sidebar:
             st.error(f"Ingest failed: {exc}")
 
     st.header("Corpus")
-    status = _status_snapshot()
-    st.metric("Docs Indexed", status["docs_indexed"])
-    st.metric("Chunks Indexed (local)", status["chunks_indexed"])
-    st.metric("Qdrant Points", status["qdrant_points"])
-    if status["qdrant_points"] == 0:
-        st.caption("Qdrant count unavailable or collection empty.")
+    if "show_corpus_status" not in st.session_state:
+        st.session_state.show_corpus_status = False
+    load_status = st.button("Load Corpus Status")
+    refresh_status = st.button("Refresh Corpus Status", disabled=not st.session_state.show_corpus_status)
+    if load_status:
+        st.session_state.show_corpus_status = True
+    if refresh_status:
+        _status_snapshot.clear()
+    if st.session_state.show_corpus_status:
+        status = _status_snapshot()
+        st.metric("Docs Indexed", status["docs_indexed"])
+        st.metric("Chunks Indexed (local)", status["chunks_indexed"])
+        st.metric("Qdrant Points", status["qdrant_points"])
+        if not QDRANT_STATUS_ENABLED:
+            st.caption("Qdrant status probe disabled for fast startup. Set QDRANT_STATUS_ENABLED=1 to enable.")
+        elif status["qdrant_points"] == 0:
+            st.caption("Qdrant count unavailable or collection empty.")
+    else:
+        st.caption("Corpus status is deferred for fast startup. Click 'Load Corpus Status' when needed.")
 
     if st.button("Run Week 2 Retrieval Tests"):
         with st.spinner("Running Week 2 retrieval suite..."):
@@ -296,6 +333,9 @@ for msg in st.session_state.messages:
 
 user_question = st.chat_input("Ask about RMF controls or policy evidence...")
 if user_question:
+    from app.rag.answer import answer_question
+    from app.rag.citations import format_citations_markdown
+
     st.session_state.messages.append({"role": "user", "content": user_question})
     with st.chat_message("user"):
         st.markdown(user_question)

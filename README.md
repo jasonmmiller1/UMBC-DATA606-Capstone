@@ -145,8 +145,8 @@ Quick run:
 # 1) Start vector DB
 docker compose up -d
 
-# 2) Build chunks + index into Qdrant
-python -m app.index.index_to_qdrant
+# 2) Build chunks + index into Qdrant (offline model cache mode)
+./scripts/index_offline.sh
 
 # 3) Build local BM25 index
 python -m app.index.bm25_index --build
