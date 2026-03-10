@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 import inspect
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -322,6 +323,8 @@ def _render_summary_markdown(
     requested_engine: str,
     assess_available: bool,
     assess_error: Optional[str],
+    llm_backend: str,
+    openrouter_model: Optional[str],
 ) -> str:
     lines: List[str] = []
     lines.append("# Week 5 Baseline Evaluation Summary")
@@ -330,6 +333,11 @@ def _render_summary_markdown(
     lines.append(f"- Input: `{input_path}`")
     lines.append(f"- Results JSONL: `{output_jsonl}`")
     lines.append(f"- Requested engine mode: `{requested_engine}`")
+    lines.append(f"- LLM backend: `{llm_backend}`")
+    if openrouter_model:
+        lines.append(f"- OpenRouter model: `{openrouter_model}`")
+    else:
+        lines.append("- OpenRouter model: `(not set)`")
     lines.append(f"- `assess_control` available: `{assess_available}`")
     if assess_error:
         lines.append(f"- `assess_control` import note: `{assess_error}`")
@@ -380,11 +388,15 @@ def main() -> None:
 
     assess_control_fn, assess_error = _try_load_assess_control()
     assess_available = assess_control_fn is not None
+    llm_backend = os.getenv("LLM_BACKEND", "none").strip().lower() or "none"
+    openrouter_model = os.getenv("OPENROUTER_MODEL", "").strip() or None
     if args.engine == "assess" and not assess_available:
         raise RuntimeError(
             "Engine mode 'assess' requested, but app.assess.engine.assess_control is unavailable: "
             f"{assess_error}"
         )
+
+    print(f"llm_backend={llm_backend} openrouter_model={openrouter_model or '(not set)'}")
 
     results: List[Dict[str, Any]] = []
     total = len(rows)
@@ -411,6 +423,8 @@ def main() -> None:
         requested_engine=args.engine,
         assess_available=assess_available,
         assess_error=assess_error,
+        llm_backend=llm_backend,
+        openrouter_model=openrouter_model,
     )
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.write_text(summary_md, encoding="utf-8")

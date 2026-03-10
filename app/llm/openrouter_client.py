@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import time
 from typing import Any, Dict, List
 
@@ -20,20 +21,19 @@ class OpenRouterLLMClient:
     """
 
     endpoint = "https://openrouter.ai/api/v1/chat/completions"
-    default_retry_count = 2
+    default_retry_count = 3
     retry_backoff_seconds = 0.5
+    retry_jitter_seconds = 0.15
     default_fallback_models = [
         "nvidia/nemotron-nano-9b-v2:free",
         "google/gemma-3-12b-it:free",
         "qwen/qwen3-4b:free",
     ]
 
-    def __init__(self) -> None:
+    def __init__(self, model: str | None = None) -> None:
         self.api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
-        self.model = os.getenv(
-            "OPENROUTER_MODEL",
-            "mistralai/mistral-small-3.1-24b-instruct:free",
-        ).strip()
+        env_model = os.getenv("OPENROUTER_MODEL", "mistralai/mistral-small-3.1-24b-instruct:free").strip()
+        self.model = (model or env_model).strip()
         fallback_models_env = os.getenv("OPENROUTER_FALLBACK_MODELS", "").strip()
         if fallback_models_env:
             parsed = [m.strip() for m in fallback_models_env.split(",") if m.strip()]
@@ -42,6 +42,11 @@ class OpenRouterLLMClient:
             self.fallback_models = list(self.default_fallback_models)
         self.app_url = os.getenv("OPENROUTER_APP_URL", "").strip()
         self.app_title = os.getenv("OPENROUTER_APP_TITLE", "").strip()
+
+    def _sleep_for_retry(self, attempt: int) -> None:
+        base_delay = self.retry_backoff_seconds * (2**attempt)
+        jitter = random.uniform(0.0, self.retry_jitter_seconds)
+        time.sleep(base_delay + jitter)
 
     def _format_context(self, context: List[Dict]) -> str:
         if not context:
@@ -78,7 +83,7 @@ class OpenRouterLLMClient:
         else:
             raw = os.getenv("OPENROUTER_RETRY_COUNT", str(self.default_retry_count))
         try:
-            return max(0, int(raw))
+            return min(3, max(0, int(raw)))
         except (TypeError, ValueError):
             return self.default_retry_count
 
@@ -157,7 +162,7 @@ class OpenRouterLLMClient:
                                 attempts_for_model,
                                 exc,
                             )
-                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            self._sleep_for_retry(attempt)
                             continue
                         logger.warning(
                             "OpenRouter request failure model=%s retries_exhausted=%s switching_model=%s error=%s",
@@ -183,7 +188,7 @@ class OpenRouterLLMClient:
                                 attempt + 1,
                                 attempts_for_model,
                             )
-                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            self._sleep_for_retry(attempt)
                             continue
                         logger.warning(
                             "OpenRouter empty body model=%s retries_exhausted=%s switching_model=%s",
@@ -227,7 +232,7 @@ class OpenRouterLLMClient:
                                 attempts_for_model,
                                 err_msg,
                             )
-                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            self._sleep_for_retry(attempt)
                             continue
                         if is_transient_error:
                             logger.warning(
@@ -262,7 +267,7 @@ class OpenRouterLLMClient:
                                 attempt + 1,
                                 attempts_for_model,
                             )
-                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            self._sleep_for_retry(attempt)
                             continue
                         logger.warning(
                             "OpenRouter transient status retries exhausted model=%s status=%s switching_model=%s",
@@ -284,7 +289,7 @@ class OpenRouterLLMClient:
                                 attempt + 1,
                                 attempts_for_model,
                             )
-                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            self._sleep_for_retry(attempt)
                             continue
                         logger.warning(
                             "OpenRouter malformed response retries exhausted model=%s switching_model=%s",
@@ -306,7 +311,7 @@ class OpenRouterLLMClient:
                                 attempt + 1,
                                 attempts_for_model,
                             )
-                            time.sleep(self.retry_backoff_seconds * (2**attempt))
+                            self._sleep_for_retry(attempt)
                             continue
                         logger.warning(
                             "OpenRouter malformed content retries exhausted model=%s switching_model=%s",

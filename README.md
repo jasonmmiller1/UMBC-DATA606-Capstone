@@ -173,6 +173,33 @@ python -m app.retrieval.run_week2_tests
 Planned:
 - Golden question set (`golden_questions.jsonl`) for Q&A + assessment evaluation
 
+### Week 5 Eval Run Modes (Reproducible)
+
+For stable/reproducible runs, explicitly set backend/model in the shell before running eval.
+
+Run eval with LLM disabled (retrieval-only mode):
+
+```bash
+LLM_BACKEND=none python scripts/run_week5_eval.py \
+  --input-path data/eval/golden_questions.jsonl \
+  --summary-path data/eval/week5_none_summary.md
+```
+
+Run eval with OpenRouter paid model:
+
+```bash
+LLM_BACKEND=openrouter \
+OPENROUTER_MODEL="<paid-model-id>" \
+OPENROUTER_API_KEY="<your-key>" \
+python scripts/run_week5_eval.py \
+  --input-path data/eval/golden_questions.jsonl \
+  --summary-path data/eval/week5_paid_model_summary.md
+```
+
+Why paid models for eval reliability:
+- `:free` models are more likely to hit provider limits (429), transient upstream failures (502), or malformed responses.
+- paid models generally provide steadier throughput and fewer fallback/retry events, which improves eval consistency.
+
 ---
 
 ## Roadmap (8-week compressed plan)

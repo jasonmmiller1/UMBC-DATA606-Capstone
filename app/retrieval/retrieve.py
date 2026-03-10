@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 from pathlib import Path
 import re
+import time
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import pandas as pd
@@ -15,8 +17,12 @@ from app.index.bm25_index import load_index
 from app.index.qdrant_schema import DEFAULT_COLLECTION
 from app.utils.embeddings import embed_texts
 
+logger = logging.getLogger(__name__)
+
 
 CONTROL_QUERY_RE = re.compile(r"^[A-Za-z]{2,3}-\d+([(.]\d+[)]?)?$")
+CONTROL_ID_TOKEN_RE = re.compile(r"\b[A-Za-z]{2,3}-\d{1,3}(?:\(\d+\))?\b")
+TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 SECTION_TYPES = {
     "purpose",
     "scope",
@@ -39,6 +45,26 @@ SECTION_TYPE_QUERY_HINTS: Dict[str, Tuple[str, ...]] = {
     "definitions": ("definition", "definitions", "glossary", "terminology"),
     "exceptions": ("exception", "exceptions"),
 }
+RERANKER_STOPWORDS = {
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "to",
+    "for",
+    "of",
+    "in",
+    "on",
+    "with",
+    "our",
+    "what",
+    "does",
+    "is",
+    "are",
+}
+PRODUCTION_ENV_VALUES = {"prod", "production"}
+DEFAULT_RERANK_INTENTS = {"policy"}
 
 
 def build_qdrant_filter(
@@ -134,6 +160,47 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _normalize_intent(value: Optional[str]) -> str:
+    return str(value or "").strip().lower()
+
+
+def _rerank_enabled_default() -> bool:
+    for env_name in ("APP_ENV", "ENVIRONMENT", "ENV", "RUNTIME_ENV"):
+        value = _normalize_intent(os.getenv(env_name, ""))
+        if value in PRODUCTION_ENV_VALUES:
+            return False
+    return True
+
+
+def _rerank_enabled() -> bool:
+    default = _rerank_enabled_default()
+    rerank_enabled_raw = os.getenv("RERANK_ENABLED", "")
+    if rerank_enabled_raw.strip():
+        return _env_bool("RERANK_ENABLED", default)
+
+    # Backward compatibility with previous flag name.
+    legacy_raw = os.getenv("ENABLE_RERANKER", "")
+    if legacy_raw.strip():
+        return _env_bool("ENABLE_RERANKER", default)
+
+    return default
+
+
+def _rerank_intents() -> set[str]:
+    raw = os.getenv("RERANK_INTENTS", "policy")
+    intents = {_normalize_intent(part) for part in raw.split(",") if _normalize_intent(part)}
+    return intents or set(DEFAULT_RERANK_INTENTS)
+
+
+def _should_apply_reranker(intent: Optional[str]) -> bool:
+    if not _rerank_enabled():
+        return False
+    normalized_intent = _normalize_intent(intent)
+    if not normalized_intent:
+        return False
+    return normalized_intent in _rerank_intents()
+
+
 def _infer_section_type_from_heading(heading: str) -> str:
     text = (heading or "").strip().lower()
     if not text:
@@ -200,6 +267,81 @@ def _policy_section_multiplier(query: str, payload: Dict) -> float:
     return 1.0
 
 
+def _base_control_id(value: str) -> str:
+    match = CONTROL_ID_TOKEN_RE.search((value or "").upper())
+    if not match:
+        return ""
+    text = match.group(0)
+    return text.split("(", 1)[0]
+
+
+def _query_control_ids(query: str) -> set[str]:
+    return {_base_control_id(token) for token in CONTROL_ID_TOKEN_RE.findall(query or "") if _base_control_id(token)}
+
+
+def _keyword_terms(text: str) -> set[str]:
+    terms = {t.lower() for t in TOKEN_RE.findall(text or "")}
+    return {t for t in terms if t not in RERANKER_STOPWORDS and len(t) > 1}
+
+
+def _rerank_candidates(
+    query: str,
+    candidates: List[Dict],
+    *,
+    top_k: int,
+) -> List[Dict]:
+    if not candidates:
+        return []
+
+    control_match_boost = _env_float("RERANK_CONTROL_MATCH_BOOST", 0.25)
+    heading_overlap_boost = _env_float("RERANK_HEADING_OVERLAP_BOOST", 0.04)
+    low_signal_penalty = _env_float("RERANK_LOW_SIGNAL_PENALTY", 0.08)
+
+    query_controls = _query_control_ids(query)
+    query_terms = _keyword_terms(query)
+
+    reranked: List[Dict] = []
+    for item in candidates:
+        payload = item.get("payload", {}) or {}
+        delta = 0.0
+
+        payload_control_id = _base_control_id(str(payload.get("control_id", "") or ""))
+        if payload_control_id and payload_control_id in query_controls:
+            delta += control_match_boost
+
+        heading_text = " ".join(
+            [
+                str(payload.get("heading", "") or ""),
+                str(payload.get("section_path", "") or ""),
+            ]
+        )
+        heading_terms = _keyword_terms(heading_text)
+        overlap = len(query_terms & heading_terms)
+        if overlap > 0:
+            delta += heading_overlap_boost * float(overlap)
+
+        section_type = _section_type_from_payload(payload)
+        if section_type in LOW_SIGNAL_SECTION_TYPES and not _query_requests_low_signal_section(query, section_type):
+            delta -= low_signal_penalty
+
+        rerank_score = float(item.get("rrf_score", 0.0)) + delta
+        enriched = dict(item)
+        enriched["rerank_delta"] = float(delta)
+        enriched["rerank_score"] = float(rerank_score)
+        enriched["rrf_score"] = float(rerank_score)
+        reranked.append(enriched)
+
+    reranked.sort(
+        key=lambda item: (
+            float(item.get("rerank_score", item.get("rrf_score", 0.0))),
+            float(item.get("base_rrf_score", item.get("rrf_score", 0.0))),
+            str(item.get("chunk_id", "")),
+        ),
+        reverse=True,
+    )
+    return reranked[:top_k]
+
+
 def hybrid_retrieve(
     query: str,
     client: QdrantClient,
@@ -213,6 +355,7 @@ def hybrid_retrieve(
     source_type: Optional[str] = None,
     control_id: Optional[str] = None,
     doc_id: Optional[str] = None,
+    intent: Optional[str] = None,
 ) -> List[Dict]:
     inferred_control = _control_id_from_query(query)
     if inferred_control and not control_id:
@@ -247,24 +390,64 @@ def hybrid_retrieve(
         weighted_score = float(fused_score) * float(multiplier)
         weighted.append((chunk_id, weighted_score, float(multiplier), float(fused_score)))
     weighted.sort(key=lambda item: (item[1], item[3], item[0]), reverse=True)
-    weighted = weighted[:top_k]
 
-    results: List[Dict] = []
-    for rank, (chunk_id, fused_score, section_multiplier, base_rrf_score) in enumerate(weighted, start=1):
+    scored: List[Dict] = []
+    for chunk_id, fused_score, section_multiplier, base_rrf_score in weighted:
         payload = dict(chunk_map.get(chunk_id, {}))
         payload.update(dense_payload_map.get(chunk_id, {}))
-        results.append(
+        scored.append(
             {
-                "rank": rank,
                 "chunk_id": chunk_id,
-                "rrf_score": fused_score,
-                "base_rrf_score": base_rrf_score,
-                "policy_section_multiplier": section_multiplier,
+                "rrf_score": float(fused_score),
+                "base_rrf_score": float(base_rrf_score),
+                "policy_section_multiplier": float(section_multiplier),
                 "dense_score": dense_score_map.get(chunk_id),
                 "bm25_score": bm25_score_map.get(chunk_id),
                 "payload": payload,
             }
         )
+
+    scored_top_k = scored[:top_k]
+    if _should_apply_reranker(intent):
+        rerank_candidates = max(
+            top_k,
+            int(_env_float("RERANK_CANDIDATES", 20)),
+        )
+        candidate_pool = scored[:rerank_candidates]
+        start = time.perf_counter()
+        try:
+            scored = _rerank_candidates(
+                query=query,
+                candidates=candidate_pool,
+                top_k=top_k,
+            )
+            rerank_time_ms = (time.perf_counter() - start) * 1000.0
+            logger.info(
+                "Reranker applied intent=%s candidate_k=%d final_top_k=%d rerank_time_ms=%.2f",
+                _normalize_intent(intent) or "unknown",
+                len(candidate_pool),
+                top_k,
+                rerank_time_ms,
+            )
+        except Exception:
+            rerank_time_ms = (time.perf_counter() - start) * 1000.0
+            logger.warning(
+                "Reranker failed intent=%s candidate_k=%d final_top_k=%d rerank_time_ms=%.2f; using baseline ordering",
+                _normalize_intent(intent) or "unknown",
+                len(candidate_pool),
+                top_k,
+                rerank_time_ms,
+                exc_info=True,
+            )
+            scored = scored_top_k
+    else:
+        scored = scored_top_k
+
+    results: List[Dict] = []
+    for rank, item in enumerate(scored, start=1):
+        row = dict(item)
+        row["rank"] = rank
+        results.append(row)
     return results
 
 
@@ -281,6 +464,7 @@ def main() -> None:
     parser.add_argument("--source-type", default=None)
     parser.add_argument("--control-id", default=None)
     parser.add_argument("--doc-id", default=None)
+    parser.add_argument("--intent", default=None)
     parser.add_argument("--chunks-path", default="data/index/chunks.parquet")
     parser.add_argument("--bm25-index-path", default="data/bm25_index/bm25_index.pkl")
     parser.add_argument("--json", action="store_true")
@@ -309,6 +493,7 @@ def main() -> None:
         source_type=args.source_type,
         control_id=args.control_id,
         doc_id=args.doc_id,
+        intent=args.intent,
     )
 
     if args.json:

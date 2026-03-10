@@ -63,6 +63,7 @@ def get_llm_client() -> LLMClient:
             )
         from app.llm.openrouter_client import OpenRouterLLMClient
 
-        return OpenRouterLLMClient()
+        selected_model = os.getenv("OPENROUTER_MODEL", "").strip() or None
+        return OpenRouterLLMClient(model=selected_model)
     # Unknown backends fall back safely to retrieval-only mode.
     return NoneLLMClient()

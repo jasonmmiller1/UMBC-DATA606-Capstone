@@ -1,6 +1,6 @@
 # Week 5 Baseline Evaluation Summary
 
-- Generated (UTC): 2026-03-08 19:12:35
+- Generated (UTC): 2026-03-10 01:14:41
 - Input: `/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/golden_questions.jsonl`
 - Results JSONL: `/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week5_baseline_results.jsonl`
 - Requested engine mode: `auto`
@@ -11,12 +11,12 @@
 
 - Questions: 40
 - Errors: 0
-- Abstained: 13
+- Abstained: 10
 - Engine usage: {'answer_question': 40}
-- Avg context precision: 0.6432
-- Avg coverage accuracy: 0.9000
-- Avg abstention score: 0.9250
-- Avg overall score: 0.8227
+- Avg context precision: 0.6577
+- Avg coverage accuracy: 0.9750
+- Avg abstention score: 1.0000
+- Avg overall score: 0.8776
 
 ## By Mode
 
@@ -24,5 +24,5 @@
 |---|---:|---:|---:|---:|---:|
 | framework | 10 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
 | out_of_scope_policy | 10 | 0.8000 | 1.0000 | 1.0000 | 0.9333 |
-| policy | 10 | 0.3455 | 1.0000 | 0.7000 | 0.6818 |
-| policy_vs_control | 10 | 0.4274 | 0.6000 | 1.0000 | 0.6758 |
+| policy | 10 | 0.4033 | 1.0000 | 1.0000 | 0.8011 |
+| policy_vs_control | 10 | 0.4274 | 0.9000 | 1.0000 | 0.7758 |
