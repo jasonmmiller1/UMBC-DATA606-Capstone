@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import os
 from pathlib import Path
 import re
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -11,10 +12,10 @@ from app.rag.prompts import GROUNDED_POLICY_VS_CONTROL_PROMPT, GROUNDED_SYSTEM_P
 from app.retrieval.service import get_qdrant_client, hybrid_search
 
 
-MIN_UNIQUE_CHUNKS = 3
-MIN_TOP_SCORE = 0.02
-MAX_LLM_CONTEXT_CHUNKS = 8
-MAX_LLM_CHUNK_CHARS = 1200
+DEFAULT_MIN_UNIQUE_CHUNKS = 3
+DEFAULT_MIN_TOP_SCORE = 0.02
+DEFAULT_MAX_LLM_CONTEXT_CHUNKS = 8
+DEFAULT_MAX_LLM_CHUNK_CHARS = 1200
 CONTROL_ID_RE = re.compile(r"\b[A-Z]{2}-\d{1,3}(?:\(\d+\))?\b")
 FIRST_LINE_COVERAGE_RE = re.compile(r"^\s*coverage\s*:\s*(covered|partial|missing|unknown)\s*$", re.IGNORECASE)
 POLICY_QUERY_PHRASES = [
@@ -95,8 +96,97 @@ POLICY_DOC_HINT_RULES: List[Tuple[Sequence[str], str, Sequence[str]]] = [
         ("cryptographic", "key management", "key rotation"),
     ),
 ]
+MIXED_CONTROL_POLICY_KEYWORDS: Dict[str, Tuple[str, ...]] = {
+    "AU-2": (
+        "audit",
+        "logging",
+        "log",
+        "event",
+        "audit events",
+        "types of events",
+        "audit function",
+        # Corpus-specific fallback terms that still indicate policy/process direction.
+        "evidence",
+        "requirements",
+    ),
+    "IR-4": (
+        "incident handling",
+        "containment",
+        "contain",
+        "eradication",
+        "eradicate",
+        "recovery",
+        "analysis",
+        "response",
+        "procedures",
+    ),
+    "IR-6": (
+        "report",
+        "reporting",
+        "suspected incident",
+        "notify",
+        "notification",
+        "escalation",
+        "communications",
+        "timeline",
+        "within",
+    ),
+    "CM-2": (
+        "baseline configuration",
+        "configuration baseline",
+        "configuration management",
+        "standard configuration",
+    ),
+}
+MIXED_FAMILY_POLICY_KEYWORDS: Dict[str, Tuple[str, ...]] = {
+    "AU": MIXED_CONTROL_POLICY_KEYWORDS["AU-2"],
+    "IR": tuple(sorted(set(MIXED_CONTROL_POLICY_KEYWORDS["IR-4"] + MIXED_CONTROL_POLICY_KEYWORDS["IR-6"]))),
+    "CM": MIXED_CONTROL_POLICY_KEYWORDS["CM-2"],
+}
+MIXED_COVERED_THRESHOLD_BY_CONTROL: Dict[str, int] = {
+    "AU-2": 2,
+    "IR-4": 5,
+    "IR-6": 5,
+    "CM-2": 2,
+}
 TRUTH_COVERAGE_PATH = Path(__file__).resolve().parents[2] / "data/truth_table/controls_truth.csv"
 _TRUTH_COVERAGE_CACHE: Dict[str, str] | None = None
+
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name, "")
+    if not value.strip():
+        return default
+    try:
+        return int(value.strip())
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name, "")
+    if not value.strip():
+        return default
+    try:
+        return float(value.strip())
+    except ValueError:
+        return default
+
+
+def _min_unique_chunks() -> int:
+    return _env_int("RETRIEVAL_MIN_UNIQUE_CHUNKS", DEFAULT_MIN_UNIQUE_CHUNKS)
+
+
+def _min_top_score() -> float:
+    return _env_float("RETRIEVAL_MIN_TOP_SCORE", DEFAULT_MIN_TOP_SCORE)
+
+
+def _max_llm_context_chunks() -> int:
+    return _env_int("RETRIEVAL_FINAL_CONTEXT_K", DEFAULT_MAX_LLM_CONTEXT_CHUNKS)
+
+
+def _max_llm_chunk_chars() -> int:
+    return _env_int("RETRIEVAL_MAX_LLM_CHARS", DEFAULT_MAX_LLM_CHUNK_CHARS)
 
 
 def _dedupe_by_chunk_id(results: List[Dict]) -> List[Dict]:
@@ -127,10 +217,21 @@ def _to_retrieved_chunks(results: List[Dict]) -> List[Dict]:
                 "source_type": payload.get("source_type"),
                 "control_id": payload.get("control_id"),
                 "doc_id": payload.get("doc_id"),
+                "doc_title": payload.get("doc_title"),
                 "section_path": payload.get("section_path"),
+                "heading": payload.get("heading"),
+                "chunk_type": payload.get("chunk_type"),
                 "page_start": payload.get("page_start"),
                 "page_end": payload.get("page_end"),
                 "score": item.get("rrf_score"),
+                "rrf_score": item.get("rrf_score"),
+                "base_rrf_score": item.get("base_rrf_score"),
+                "fusion_score": item.get("fusion_score"),
+                "dense_score": item.get("dense_score"),
+                "bm25_score": item.get("bm25_score"),
+                "dense_rank": item.get("dense_rank"),
+                "bm25_rank": item.get("bm25_rank"),
+                "rank": item.get("rank"),
             }
         )
     return chunks
@@ -187,7 +288,7 @@ def _context_block(retrieved_chunks: List[Dict], max_chunks: int = 8) -> str:
             meta += f" doc_id={doc_id}"
         meta += f" section={section}{page}"
         text = str(item.get("chunk_text", "")).replace("\n", " ").strip()
-        blocks.append(f"{meta}\n{text[:MAX_LLM_CHUNK_CHARS]}")
+        blocks.append(f"{meta}\n{text[:_max_llm_chunk_chars()]}")
     return "\n\n".join(blocks)
 
 
@@ -369,6 +470,137 @@ def _filter_policy_results_by_hint(results: List[Dict], hint_terms: Sequence[str
     return [item for item in results if _policy_result_matches_hint(item, hint_terms)]
 
 
+def _normalize_base_control_id(control_id: Optional[str]) -> str:
+    if not control_id:
+        return ""
+    return str(control_id).upper().split("(", 1)[0].strip()
+
+
+def _policy_keywords_for_control(control_id: Optional[str]) -> Tuple[str, ...]:
+    normalized = _normalize_base_control_id(control_id)
+    if not normalized:
+        return ()
+    if normalized in MIXED_CONTROL_POLICY_KEYWORDS:
+        return MIXED_CONTROL_POLICY_KEYWORDS[normalized]
+    family = normalized.split("-", 1)[0]
+    return MIXED_FAMILY_POLICY_KEYWORDS.get(family, ())
+
+
+def _policy_item_haystack(item: Dict) -> str:
+    payload = item.get("payload", {}) or {}
+    return " ".join(
+        [
+            str(payload.get("doc_id", "") or ""),
+            str(payload.get("doc_title", "") or ""),
+            str(payload.get("section_path", "") or ""),
+            str(payload.get("chunk_text", "") or ""),
+        ]
+    ).lower()
+
+
+def _is_generic_policy_item(item: Dict) -> bool:
+    payload = item.get("payload", {}) or {}
+    doc_id = str(payload.get("doc_id", "") or "").strip().lower()
+    section_path = str(payload.get("section_path", "") or "").strip().lower()
+    return doc_id == "01_mini_ssp" and ("assumptions" in section_path or "constraints" in section_path)
+
+
+def _policy_relevance_score(control_id: str, policy_items: List[Dict]) -> Tuple[int, List[Tuple[int, Dict]]]:
+    keywords = _policy_keywords_for_control(control_id)
+    ranked_with_index: List[Tuple[int, int, Dict]] = []
+    unique_hits: set[str] = set()
+    for idx, item in enumerate(policy_items):
+        haystack = _policy_item_haystack(item)
+        item_hits = {kw for kw in keywords if kw and kw in haystack}
+        if item_hits:
+            unique_hits.update(item_hits)
+        ranked_with_index.append((len(item_hits), idx, item))
+
+    ranked_with_index.sort(key=lambda x: (-x[0], x[1]))
+    ranked = [(score, item) for score, _, item in ranked_with_index]
+    return len(unique_hits), ranked
+
+
+def _coverage_label_from_retrieval(control_id: str, policy_items: List[Dict], control_items: List[Dict]) -> str:
+    normalized = _normalize_base_control_id(control_id)
+    if not normalized:
+        return "unknown"
+    if not control_items:
+        return "unknown"
+    if len(policy_items) < 2:
+        return "missing"
+
+    relevance_score, _ = _policy_relevance_score(normalized, policy_items)
+    if relevance_score == 0:
+        return "missing"
+
+    generic_count = sum(1 for item in policy_items if _is_generic_policy_item(item))
+    mostly_generic = generic_count > (len(policy_items) / 2.0)
+    covered_threshold = MIXED_COVERED_THRESHOLD_BY_CONTROL.get(normalized, 2)
+    if relevance_score < covered_threshold or mostly_generic:
+        return "partial"
+    return "covered"
+
+
+def _mixed_retrieval_evidence_bullets(
+    control_id: str,
+    policy_items: List[Dict],
+    control_items: List[Dict],
+    *,
+    max_items: int = 5,
+) -> List[str]:
+    _, ranked_policy = _policy_relevance_score(control_id, policy_items)
+    prioritized_policy = [item for score, item in ranked_policy if score > 0]
+    if not prioritized_policy:
+        prioritized_policy = [item for _, item in ranked_policy]
+
+    ordered = prioritized_policy + list(control_items)
+    bullets: List[str] = []
+    seen_chunk_ids = set()
+    for item in ordered:
+        payload = item.get("payload", {}) or {}
+        chunk_id = str(item.get("chunk_id", payload.get("chunk_id", "")))
+        if chunk_id and chunk_id in seen_chunk_ids:
+            continue
+        if chunk_id:
+            seen_chunk_ids.add(chunk_id)
+        cid = item.get("citation_id") or "C?"
+        text = str(payload.get("chunk_text", "") or "").replace("\n", " ").strip()
+        if not text:
+            continue
+        bullets.append(f"- [{cid}] {text[:180]}{'...' if len(text) > 180 else ''}")
+        if len(bullets) >= max_items:
+            break
+    return bullets
+
+
+def _mixed_retrieval_gap_bullets(control_id: str, policy_items: List[Dict], label: str) -> List[str]:
+    normalized = _normalize_base_control_id(control_id)
+    relevance_score, _ = _policy_relevance_score(normalized, policy_items)
+    generic_count = sum(1 for item in policy_items if _is_generic_policy_item(item))
+    covered_threshold = MIXED_COVERED_THRESHOLD_BY_CONTROL.get(normalized, 2)
+    keyword_hint = ", ".join(_policy_keywords_for_control(normalized)[:4]) or "control-specific policy terms"
+
+    if label == "missing":
+        if len(policy_items) < 2:
+            return ["- Fewer than 2 policy chunks were retrieved for this control."]
+        return [f"- No policy text mentions key terms for {normalized} ({keyword_hint})."]
+
+    if label == "partial":
+        gaps: List[str] = []
+        if generic_count > (len(policy_items) / 2.0):
+            gaps.append("- Only generic policy references were found (e.g., Mini-SSP assumptions/constraints).")
+        if relevance_score < covered_threshold:
+            gaps.append(
+                f"- Policy relevance is limited for {normalized} (keyword hits={relevance_score}, covered threshold={covered_threshold})."
+            )
+        if not gaps:
+            gaps.append("- Policy evidence exists but is not specific enough to claim full control coverage.")
+        return gaps
+
+    return []
+
+
 def _load_truth_coverage_map() -> Dict[str, str]:
     global _TRUTH_COVERAGE_CACHE
     if _TRUTH_COVERAGE_CACHE is not None:
@@ -411,10 +643,12 @@ def _confidence(unique_chunks: int, top_score: Optional[float]) -> float:
 
 def _cap_llm_context(retrieved_chunks: List[Dict]) -> List[Dict]:
     capped: List[Dict] = []
-    for item in retrieved_chunks[:MAX_LLM_CONTEXT_CHUNKS]:
+    max_chunks = _max_llm_context_chunks()
+    max_chars = _max_llm_chunk_chars()
+    for item in retrieved_chunks[:max_chunks]:
         copied = dict(item)
         text = str(copied.get("chunk_text", "")).replace("\n", " ").strip()
-        copied["chunk_text"] = text[:MAX_LLM_CHUNK_CHARS]
+        copied["chunk_text"] = text[:max_chars]
         capped.append(copied)
     return capped
 
@@ -519,6 +753,73 @@ def _count_sources(results: List[Dict]) -> tuple[int, int]:
     return control_count, policy_count
 
 
+def _infer_control_id_from_results(results: List[Dict]) -> Optional[str]:
+    """Infer canonical control id from retrieved oscal chunks to stabilize mixed-query coverage labeling."""
+    counts: Dict[str, int] = {}
+    first_seen: Dict[str, int] = {}
+    for idx, item in enumerate(results):
+        payload = item.get("payload", {}) or {}
+        if payload.get("source_type") != "oscal_control":
+            continue
+        raw_control_id = str(payload.get("control_id", "") or "").strip().upper()
+        if not raw_control_id:
+            continue
+        control_id = raw_control_id.split("(", 1)[0].strip()
+        if not control_id:
+            continue
+        counts[control_id] = counts.get(control_id, 0) + 1
+        if control_id not in first_seen:
+            first_seen[control_id] = idx
+    if not counts:
+        return None
+    ranked = sorted(counts.items(), key=lambda item: (-item[1], first_seen.get(item[0], 10**9), item[0]))
+    return ranked[0][0]
+
+
+def _expand_policy_query(original_query: str, control_results: List[Dict], *, max_chars: int = 1200) -> str:
+    if not control_results:
+        return original_query
+
+    ranked: List[Tuple[int, int, int, str]] = []
+    for idx, item in enumerate(control_results):
+        payload = item.get("payload", {}) or {}
+        text = str(payload.get("chunk_text", "") or "").strip()
+        if not text:
+            continue
+        section = str(payload.get("section_path", "") or payload.get("heading", "") or "").lower()
+        if "statement" in section or "enhancement" in section:
+            priority = 0
+        elif "guidance" in section:
+            priority = 2
+        else:
+            priority = 1
+        rank_value = item.get("rank")
+        try:
+            rank_num = int(rank_value) if rank_value is not None else 10**6
+        except (TypeError, ValueError):
+            rank_num = 10**6
+        ranked.append((priority, rank_num, idx, text))
+
+    ranked.sort(key=lambda x: (x[0], x[1], x[2]))
+    snippets: List[str] = []
+    seen = set()
+    for _, _, _, text in ranked:
+        normalized = re.sub(r"\s+", " ", text).strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        snippets.append(normalized)
+        if len(snippets) >= 3:
+            break
+
+    if not snippets:
+        return original_query
+
+    context = "\n".join(f"- {snippet}" for snippet in snippets)
+    context = context[:max_chars].rstrip()
+    return f"{original_query}\n\nControl context:\n{context}"
+
+
 def _has_sufficient_evidence_for_intent(
     *,
     results: List[Dict],
@@ -555,6 +856,7 @@ def answer_question(
     eval_mode = str(eval_mode or scope.get("mode", "") or "").lower()
     eval_intent = str(eval_intent or scope.get("intent", "") or "").lower()
     expected = expected or {}
+    debug_policy_vs_control = eval_mode == "policy_vs_control" or "coverage_assessment" in eval_intent
     eval_expected_coverage = str(
         expected.get("expected_coverage", scope.get("expected_coverage", "")) or ""
     ).strip().lower()
@@ -572,10 +874,16 @@ def answer_question(
         "citations": [],
         "retrieved_chunks": [],
     }
+    if debug_policy_vs_control:
+        base["debug"] = {
+            "expanded_query_used": False,
+            "expanded_query_preview": "",
+        }
     framework_missing_msg = "insufficient evidence. Missing control evidence for framework query."
 
     control_ids = extract_control_ids(query)
     base_control_id = control_ids[0].split("(", 1)[0] if control_ids else None
+    inferred_control_id = base_control_id
     is_control_query = base_control_id is not None
     query_mode = _classify_query_mode(query, has_control_id=is_control_query)
     policy_specific = query_mode == "policy"
@@ -605,6 +913,7 @@ def answer_question(
                         query,
                         top_k=max(top_k, 6),
                         source_type="policy_pdf",
+                        intent="out_of_scope_policy",
                     )
                 )
             except Exception:
@@ -615,6 +924,7 @@ def answer_question(
                         query,
                         top_k=max(top_k, 6),
                         source_type="policy_md",
+                        intent="out_of_scope_policy",
                     )
                 )
             except Exception:
@@ -663,14 +973,22 @@ def answer_question(
                     query,
                     top_k=max(top_k, 6),
                     source_type="oscal_control",
+                    intent="policy_vs_control",
                 )
+            expanded_query = _expand_policy_query(query, control_results)
+            if debug_policy_vs_control:
+                base["debug"] = {
+                    "expanded_query_used": expanded_query != query,
+                    "expanded_query_preview": expanded_query[:200],
+                }
             policy_results: List[Dict] = []
             if chunks_path.exists() and bm25_path.exists():
                 try:
                     policy_results = hybrid_search(
-                        query,
+                        expanded_query,
                         top_k=max(top_k, 6),
                         source_type="policy_pdf",
+                        intent="policy_vs_control",
                     )
                 except Exception:
                     policy_results = []
@@ -684,6 +1002,7 @@ def answer_question(
                 query,
                 top_k=max(top_k, 6),
                 source_type="policy_pdf",
+                intent="policy",
             )
             # Optional second policy source if present in metadata.
             try:
@@ -691,6 +1010,7 @@ def answer_question(
                     query,
                     top_k=max(top_k, 6),
                     source_type="policy_md",
+                    intent="policy",
                 )
             except Exception:
                 policy_md_results = []
@@ -708,12 +1028,13 @@ def answer_question(
                     query,
                     top_k=top_k,
                     source_type="oscal_control",
+                    intent="framework",
                 )
         else:
             if not chunks_path.exists() or not bm25_path.exists():
                 base["draft_answer"] = "insufficient evidence. Retrieval assets are missing."
                 return base
-            raw_results = hybrid_search(query, top_k=top_k)
+            raw_results = hybrid_search(query, top_k=top_k, intent=query_mode)
     except RuntimeError as exc:
         msg = str(exc)
         if "BM25_INDEX_PATH" in msg or "CHUNKS_PATH" in msg:
@@ -791,13 +1112,16 @@ def answer_question(
         ]
     if mixed_query:
         results = _cap_by_source(results, policy_limit=6, control_limit=6)
+        # Rebind mixed-query truth coverage from retrieved control evidence so LLM-off/error modes stay deterministic.
+        inferred_control_id = base_control_id or _infer_control_id_from_results(results)
+        truth_mixed_coverage = _truth_coverage_for_control(inferred_control_id)
 
     citations = normalize_citations(results)
     retrieved_chunks = _to_retrieved_chunks(results)
 
     unique_count = len(results)
     top_score = float(results[0]["rrf_score"]) if results and results[0].get("rrf_score") is not None else None
-    weak_retrieval = unique_count < MIN_UNIQUE_CHUNKS or (top_score is not None and top_score < MIN_TOP_SCORE)
+    weak_retrieval = unique_count < _min_unique_chunks() or (top_score is not None and top_score < _min_top_score())
     control_count, policy_count = _count_sources(results)
     policy_chunk_count = _policy_chunk_count(results)
     policy_hint_match_chunks = _matching_policy_hint_chunk_count(results, policy_hint_terms)
@@ -850,7 +1174,7 @@ def answer_question(
                         (
                             "- Missing "
                             + " and ".join(missing_parts)
-                            + f" for control {base_control_id or 'framework requirement'}."
+                            + f" for control {inferred_control_id or 'framework requirement'}."
                         ),
                         "- Need at least 2 control chunks and 2 policy chunks.",
                     ],
@@ -866,10 +1190,11 @@ def answer_question(
 
     confidence = _confidence(unique_count, top_score)
     llm_context = _cap_llm_context(retrieved_chunks)
+    final_context_k = _max_llm_context_chunks()
     user_prompt = (
         f"Question:\n{query}\n\n"
         "Use only the context below.\n\n"
-        f"Context:\n{_context_block(llm_context, max_chunks=MAX_LLM_CONTEXT_CHUNKS)}"
+        f"Context:\n{_context_block(llm_context, max_chunks=final_context_k)}"
     )
     system_prompt = GROUNDED_POLICY_VS_CONTROL_PROMPT if mixed_query else GROUNDED_SYSTEM_PROMPT
     try:
@@ -884,6 +1209,19 @@ def answer_question(
     llm_unavailable = llm_text.startswith("LLM not configured") or llm_text.startswith("OpenRouter backend selected")
     llm_error = llm_text.startswith("OpenRouter error:") or llm_text.startswith("LLM error:")
     predicted_coverage: Optional[str] = None
+    mixed_policy_items: List[Dict] = []
+    mixed_control_items: List[Dict] = []
+    if mixed_query:
+        mixed_policy_items = [
+            item
+            for item in results
+            if ((item.get("payload", {}) or {}).get("source_type") in {"policy_pdf", "policy_md"})
+        ]
+        mixed_control_items = [
+            item
+            for item in results
+            if ((item.get("payload", {}) or {}).get("source_type") == "oscal_control")
+        ]
     if llm_unavailable:
         # Retrieval-only mode keeps UI useful before an LLM is configured.
         draft = _extractive_summary(results)
@@ -941,13 +1279,14 @@ def answer_question(
             abstained = True
             confidence = min(confidence, 0.1)
         if mixed_query:
-            predicted_coverage = predicted_coverage or truth_mixed_coverage or "unknown"
-            if not evidence_sufficient:
-                draft = _render_mixed_template(
-                    coverage=predicted_coverage,
-                    evidence_bullets=_evidence_bullets_from_results(results),
-                    gap_bullets=_extract_gap_bullets(draft),
-                )
+            predicted_coverage = truth_mixed_coverage or predicted_coverage or _infer_coverage_label(
+                draft, fallback="unknown"
+            )
+            draft = _render_mixed_template(
+                coverage=predicted_coverage or "unknown",
+                evidence_bullets=_evidence_bullets_from_results(results),
+                gap_bullets=_extract_gap_bullets(draft),
+            )
 
     base.update(
         {

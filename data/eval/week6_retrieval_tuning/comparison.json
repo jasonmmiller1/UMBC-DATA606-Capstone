@@ -1,0 +1,418 @@
+{
+  "input_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/golden_questions.jsonl",
+  "llm_backend": "none",
+  "runs": [
+    {
+      "name": "equal_no_rerank",
+      "config": {
+        "name": "equal_no_rerank",
+        "top_k": 10,
+        "dense_k": 20,
+        "bm25_k": 20,
+        "rrf_k": 60,
+        "dense_weight": 1.0,
+        "bm25_weight": 1.0,
+        "final_context_k": 8,
+        "rerank_enabled": false,
+        "rerank_candidates": 20
+      },
+      "summary": {
+        "total_questions": 40,
+        "error_count": 0,
+        "abstained_count": 11,
+        "engine_counts": {
+          "answer_question": 40
+        },
+        "avg_context_precision": 0.7093,
+        "avg_coverage_accuracy": 0.975,
+        "avg_abstention": 0.975,
+        "avg_overall": 0.8864,
+        "by_mode": {
+          "framework": {
+            "n": 10,
+            "avg_context_precision": 1.0,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 1.0
+          },
+          "policy": {
+            "n": 10,
+            "avg_context_precision": 0.3916,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 0.9,
+            "avg_overall": 0.7639
+          },
+          "policy_vs_control": {
+            "n": 10,
+            "avg_context_precision": 0.6456,
+            "avg_coverage_accuracy": 0.9,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.8485
+          },
+          "out_of_scope_policy": {
+            "n": 10,
+            "avg_context_precision": 0.8,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.9333
+          }
+        }
+      },
+      "result_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/equal_no_rerank_results.jsonl",
+      "summary_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/equal_no_rerank_summary.md"
+    },
+    {
+      "name": "equal_rerank20",
+      "config": {
+        "name": "equal_rerank20",
+        "top_k": 10,
+        "dense_k": 20,
+        "bm25_k": 20,
+        "rrf_k": 60,
+        "dense_weight": 1.0,
+        "bm25_weight": 1.0,
+        "final_context_k": 8,
+        "rerank_enabled": true,
+        "rerank_candidates": 20
+      },
+      "summary": {
+        "total_questions": 40,
+        "error_count": 0,
+        "abstained_count": 10,
+        "engine_counts": {
+          "answer_question": 40
+        },
+        "avg_context_precision": 0.7218,
+        "avg_coverage_accuracy": 0.975,
+        "avg_abstention": 1.0,
+        "avg_overall": 0.8989,
+        "by_mode": {
+          "framework": {
+            "n": 10,
+            "avg_context_precision": 1.0,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 1.0
+          },
+          "policy": {
+            "n": 10,
+            "avg_context_precision": 0.4416,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.8139
+          },
+          "policy_vs_control": {
+            "n": 10,
+            "avg_context_precision": 0.6456,
+            "avg_coverage_accuracy": 0.9,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.8485
+          },
+          "out_of_scope_policy": {
+            "n": 10,
+            "avg_context_precision": 0.8,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.9333
+          }
+        }
+      },
+      "result_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/equal_rerank20_results.jsonl",
+      "summary_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/equal_rerank20_summary.md"
+    },
+    {
+      "name": "bm25_lean_rerank20",
+      "config": {
+        "name": "bm25_lean_rerank20",
+        "top_k": 10,
+        "dense_k": 20,
+        "bm25_k": 20,
+        "rrf_k": 60,
+        "dense_weight": 0.9,
+        "bm25_weight": 1.1,
+        "final_context_k": 8,
+        "rerank_enabled": true,
+        "rerank_candidates": 20
+      },
+      "summary": {
+        "total_questions": 40,
+        "error_count": 0,
+        "abstained_count": 20,
+        "engine_counts": {
+          "answer_question": 40
+        },
+        "avg_context_precision": 0.7474,
+        "avg_coverage_accuracy": 0.975,
+        "avg_abstention": 0.75,
+        "avg_overall": 0.8241,
+        "by_mode": {
+          "framework": {
+            "n": 10,
+            "avg_context_precision": 1.0,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 1.0
+          },
+          "policy": {
+            "n": 10,
+            "avg_context_precision": 0.43,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.81
+          },
+          "policy_vs_control": {
+            "n": 10,
+            "avg_context_precision": 0.6595,
+            "avg_coverage_accuracy": 0.9,
+            "avg_abstention": 0.0,
+            "avg_overall": 0.5199
+          },
+          "out_of_scope_policy": {
+            "n": 10,
+            "avg_context_precision": 0.9,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.9667
+          }
+        }
+      },
+      "result_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/bm25_lean_rerank20_results.jsonl",
+      "summary_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/bm25_lean_rerank20_summary.md"
+    },
+    {
+      "name": "dense_lean_rerank20",
+      "config": {
+        "name": "dense_lean_rerank20",
+        "top_k": 10,
+        "dense_k": 20,
+        "bm25_k": 20,
+        "rrf_k": 60,
+        "dense_weight": 1.1,
+        "bm25_weight": 0.9,
+        "final_context_k": 8,
+        "rerank_enabled": true,
+        "rerank_candidates": 20
+      },
+      "summary": {
+        "total_questions": 40,
+        "error_count": 0,
+        "abstained_count": 10,
+        "engine_counts": {
+          "answer_question": 40
+        },
+        "avg_context_precision": 0.6806,
+        "avg_coverage_accuracy": 0.975,
+        "avg_abstention": 1.0,
+        "avg_overall": 0.8852,
+        "by_mode": {
+          "framework": {
+            "n": 10,
+            "avg_context_precision": 1.0,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 1.0
+          },
+          "policy": {
+            "n": 10,
+            "avg_context_precision": 0.3717,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.7906
+          },
+          "policy_vs_control": {
+            "n": 10,
+            "avg_context_precision": 0.6506,
+            "avg_coverage_accuracy": 0.9,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.8502
+          },
+          "out_of_scope_policy": {
+            "n": 10,
+            "avg_context_precision": 0.7,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.9
+          }
+        }
+      },
+      "result_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/dense_lean_rerank20_results.jsonl",
+      "summary_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/dense_lean_rerank20_summary.md"
+    },
+    {
+      "name": "deeper_rerank30_ctx10",
+      "config": {
+        "name": "deeper_rerank30_ctx10",
+        "top_k": 10,
+        "dense_k": 30,
+        "bm25_k": 30,
+        "rrf_k": 60,
+        "dense_weight": 1.0,
+        "bm25_weight": 1.0,
+        "final_context_k": 10,
+        "rerank_enabled": true,
+        "rerank_candidates": 30
+      },
+      "summary": {
+        "total_questions": 40,
+        "error_count": 0,
+        "abstained_count": 10,
+        "engine_counts": {
+          "answer_question": 40
+        },
+        "avg_context_precision": 0.7162,
+        "avg_coverage_accuracy": 0.975,
+        "avg_abstention": 1.0,
+        "avg_overall": 0.8971,
+        "by_mode": {
+          "framework": {
+            "n": 10,
+            "avg_context_precision": 1.0,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 1.0
+          },
+          "policy": {
+            "n": 10,
+            "avg_context_precision": 0.4194,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.8065
+          },
+          "policy_vs_control": {
+            "n": 10,
+            "avg_context_precision": 0.6456,
+            "avg_coverage_accuracy": 0.9,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.8485
+          },
+          "out_of_scope_policy": {
+            "n": 10,
+            "avg_context_precision": 0.8,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.9333
+          }
+        }
+      },
+      "result_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/deeper_rerank30_ctx10_results.jsonl",
+      "summary_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/deeper_rerank30_ctx10_summary.md"
+    },
+    {
+      "name": "shallow_no_rerank_ctx6",
+      "config": {
+        "name": "shallow_no_rerank_ctx6",
+        "top_k": 8,
+        "dense_k": 12,
+        "bm25_k": 12,
+        "rrf_k": 60,
+        "dense_weight": 1.0,
+        "bm25_weight": 1.0,
+        "final_context_k": 6,
+        "rerank_enabled": false,
+        "rerank_candidates": 12
+      },
+      "summary": {
+        "total_questions": 40,
+        "error_count": 0,
+        "abstained_count": 12,
+        "engine_counts": {
+          "answer_question": 40
+        },
+        "avg_context_precision": 0.7406,
+        "avg_coverage_accuracy": 0.975,
+        "avg_abstention": 0.95,
+        "avg_overall": 0.8886,
+        "by_mode": {
+          "framework": {
+            "n": 10,
+            "avg_context_precision": 1.0,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 1.0
+          },
+          "policy": {
+            "n": 10,
+            "avg_context_precision": 0.4776,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 0.8,
+            "avg_overall": 0.7592
+          },
+          "policy_vs_control": {
+            "n": 10,
+            "avg_context_precision": 0.685,
+            "avg_coverage_accuracy": 0.9,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.8617
+          },
+          "out_of_scope_policy": {
+            "n": 10,
+            "avg_context_precision": 0.8,
+            "avg_coverage_accuracy": 1.0,
+            "avg_abstention": 1.0,
+            "avg_overall": 0.9333
+          }
+        }
+      },
+      "result_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/shallow_no_rerank_ctx6_results.jsonl",
+      "summary_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_retrieval_tuning/shallow_no_rerank_ctx6_summary.md"
+    }
+  ],
+  "recommended": {
+    "name": "equal_rerank20",
+    "config": {
+      "name": "equal_rerank20",
+      "top_k": 10,
+      "dense_k": 20,
+      "bm25_k": 20,
+      "rrf_k": 60,
+      "dense_weight": 1.0,
+      "bm25_weight": 1.0,
+      "final_context_k": 8,
+      "rerank_enabled": true,
+      "rerank_candidates": 20
+    },
+    "summary": {
+      "total_questions": 40,
+      "error_count": 0,
+      "abstained_count": 10,
+      "engine_counts": {
+        "answer_question": 40
+      },
+      "avg_context_precision": 0.7218,
+      "avg_coverage_accuracy": 0.975,
+      "avg_abstention": 1.0,
+      "avg_overall": 0.8989,
+      "by_mode": {
+        "framework": {
+          "n": 10,
+          "avg_context_precision": 1.0,
+          "avg_coverage_accuracy": 1.0,
+          "avg_abstention": 1.0,
+          "avg_overall": 1.0
+        },
+        "policy": {
+          "n": 10,
+          "avg_context_precision": 0.4416,
+          "avg_coverage_accuracy": 1.0,
+          "avg_abstention": 1.0,
+          "avg_overall": 0.8139
+        },
+        "policy_vs_control": {
+          "n": 10,
+          "avg_context_precision": 0.6456,
+          "avg_coverage_accuracy": 0.9,
+          "avg_abstention": 1.0,
+          "avg_overall": 0.8485
+        },
+        "out_of_scope_policy": {
+          "n": 10,
+          "avg_context_precision": 0.8,
+          "avg_coverage_accuracy": 1.0,
+          "avg_abstention": 1.0,
+          "avg_overall": 0.9333
+        }
+      }
+    },
+    "complexity_score": 1.2
+  }
+}

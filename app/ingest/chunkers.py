@@ -14,9 +14,18 @@ CONTROL_ID_RE = re.compile(r"^[A-Z]{2,3}-\d+")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
 PARAGRAPH_SPLIT_RE = re.compile(r"\n\s*\n")
 TABLE_SEPARATOR_CELL_RE = re.compile(r"^:?-{3,}:?$")
+LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+|[A-Za-z][.)]\s+)")
+THEMATIC_BREAK_RE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
+PAGE_MARKER_RES = (
+    re.compile(r"^\s*<!--\s*page\s*[:=-]?\s*(\d+)\s*-->\s*$", flags=re.IGNORECASE),
+    re.compile(r"^\s*\[?\s*page\s+(\d+)(?:\s+of\s+\d+)?\s*\]?\s*$", flags=re.IGNORECASE),
+)
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?;:])\s+")
 
 POLICY_MIN_CHUNK_CHARS = 400
 POLICY_MAX_CHUNK_CHARS = 2800
+POLICY_OVERLAP_TARGET_CHARS = 220
+DIAGNOSTIC_SAMPLE_CHARS = 240
 SECTION_TYPES = {
     "purpose",
     "scope",
@@ -43,12 +52,18 @@ class ChunkRecord:
     control_family: Optional[str] = None
     doc_id: Optional[str] = None
     doc_title: Optional[str] = None
+    source_document_id: Optional[str] = None
+    title: Optional[str] = None
+    source_file: Optional[str] = None
     section_path: Optional[str] = None
     heading: Optional[str] = None
     heading_level: Optional[int] = None
     section_type: Optional[str] = None
+    chunk_type: Optional[str] = None
+    chunk_index: Optional[int] = None
     chunk_len_chars: Optional[int] = None
     table_present: Optional[bool] = False
+    table_markdown: Optional[str] = None
     page_start: Optional[int] = None
     page_end: Optional[int] = None
 
@@ -59,13 +74,31 @@ class _PolicySection:
     heading_level: int
     section_path: str
     parent_path: str
-    chunk_text: str
+    body_text: str
+    page_start: Optional[int] = None
+    page_end: Optional[int] = None
 
 
 @dataclass
 class _ChunkBlock:
     kind: str
     text: str
+
+
+@dataclass
+class _TextUnit:
+    kind: str
+    text: str
+
+
+@dataclass
+class _SectionChunk:
+    chunk_text: str
+    chunk_type: str
+    table_present: bool = False
+    table_markdown: Optional[str] = None
+    page_start: Optional[int] = None
+    page_end: Optional[int] = None
 
 
 def _stable_chunk_id(prefix: str, parts: Iterable[Optional[str]]) -> str:
@@ -189,6 +222,314 @@ def _chunk_contains_markdown_table(chunk_text: str) -> bool:
     return False
 
 
+def _page_number_from_line(line: str) -> Optional[int]:
+    for pattern in PAGE_MARKER_RES:
+        match = pattern.match(line or "")
+        if match:
+            try:
+                return int(match.group(1))
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def _normalize_inline_text(lines: List[str]) -> str:
+    return re.sub(r"\s+", " ", " ".join((line or "").strip() for line in lines if (line or "").strip())).strip()
+
+
+def _extract_text_units(text: str) -> List[_TextUnit]:
+    lines = (text or "").splitlines()
+    if not lines:
+        return []
+
+    units: List[_TextUnit] = []
+    paragraph_lines: List[str] = []
+
+    def flush_paragraph() -> None:
+        nonlocal paragraph_lines
+        paragraph = _normalize_inline_text(paragraph_lines)
+        if paragraph:
+            units.append(_TextUnit(kind="paragraph", text=paragraph))
+        paragraph_lines = []
+
+    idx = 0
+    while idx < len(lines):
+        line = lines[idx]
+        stripped = (line or "").strip()
+        if not stripped:
+            flush_paragraph()
+            idx += 1
+            continue
+
+        if THEMATIC_BREAK_RE.match(stripped):
+            flush_paragraph()
+            units.append(_TextUnit(kind="divider", text=stripped))
+            idx += 1
+            continue
+
+        if LIST_ITEM_RE.match(line):
+            flush_paragraph()
+            item_lines = [line]
+            idx += 1
+            while idx < len(lines):
+                candidate = lines[idx]
+                candidate_stripped = (candidate or "").strip()
+                if not candidate_stripped:
+                    break
+                if LIST_ITEM_RE.match(candidate):
+                    break
+                item_lines.append(candidate)
+                idx += 1
+            item_text = _normalize_inline_text(item_lines)
+            if item_text:
+                units.append(_TextUnit(kind="list_item", text=item_text))
+            continue
+
+        paragraph_lines.append(line)
+        idx += 1
+
+    flush_paragraph()
+    return units
+
+
+def _split_long_text_unit(text: str, *, max_chars: int) -> List[str]:
+    clean = _clean_text(text)
+    if not clean:
+        return []
+    if len(clean) <= max_chars:
+        return [clean]
+
+    sentences = [s.strip() for s in SENTENCE_SPLIT_RE.split(clean) if s.strip()]
+    if len(sentences) <= 1:
+        return _split_long_paragraph(clean, max_chars)
+
+    pieces: List[str] = []
+    current = ""
+    for sentence in sentences:
+        candidate = sentence if not current else f"{current} {sentence}"
+        if len(candidate) <= max_chars:
+            current = candidate
+            continue
+        if current:
+            pieces.append(current)
+            current = ""
+        if len(sentence) <= max_chars:
+            current = sentence
+            continue
+        pieces.extend(_split_long_paragraph(sentence, max_chars))
+
+    if current:
+        pieces.append(current)
+    return [_clean_text(piece) for piece in pieces if _clean_text(piece)]
+
+
+def _join_text_units(units: List[_TextUnit]) -> str:
+    out: List[str] = []
+    prev_kind: Optional[str] = None
+    for unit in units:
+        text = _clean_text(unit.text)
+        if not text:
+            continue
+        if not out:
+            out.append(text)
+        elif prev_kind == "list_item" and unit.kind == "list_item":
+            out.append(f"\n{text}")
+        else:
+            out.append(f"\n\n{text}")
+        prev_kind = unit.kind
+    return "".join(out)
+
+
+def _render_section_chunk_text(heading: str, body_text: str) -> str:
+    clean_heading = _clean_text(heading)
+    clean_body = _clean_text(body_text)
+    if clean_heading and clean_body:
+        return _clean_text(f"{clean_heading}\n\n{clean_body}")
+    return clean_heading or clean_body
+
+
+def _render_section_chunk_length(heading: str, units: List[_TextUnit]) -> int:
+    return len(_render_section_chunk_text(heading, _join_text_units(units)))
+
+
+def _select_overlap_units(units: List[_TextUnit], *, target_chars: int) -> List[_TextUnit]:
+    if len(units) < 2:
+        return []
+
+    selected: List[_TextUnit] = []
+    total = 0
+    for unit in reversed(units):
+        unit_len = len(_clean_text(unit.text))
+        if unit_len <= 0:
+            continue
+        if unit_len > target_chars and not selected:
+            return []
+        if selected and (total + unit_len) > target_chars:
+            break
+        selected.insert(0, unit)
+        total += unit_len
+        if unit.kind != "list_item":
+            break
+    return selected
+
+
+def _chunk_text_units(
+    heading: str,
+    units: List[_TextUnit],
+    *,
+    max_chars: int,
+    overlap_target_chars: int,
+) -> List[str]:
+    if not units:
+        return []
+
+    available_chars = max(200, max_chars - len(_clean_text(heading)) - 2)
+    working = list(units)
+    chunks: List[str] = []
+    current: List[_TextUnit] = []
+    idx = 0
+
+    while idx < len(working):
+        unit = working[idx]
+        if _render_section_chunk_length(heading, current + [unit]) <= max_chars:
+            current.append(unit)
+            idx += 1
+            continue
+
+        if current:
+            chunk_text = _render_section_chunk_text(heading, _join_text_units(current))
+            if chunk_text:
+                chunks.append(chunk_text)
+            overlap_units = _select_overlap_units(current, target_chars=overlap_target_chars)
+            current = list(overlap_units)
+            if current and _render_section_chunk_length(heading, current + [unit]) > max_chars:
+                current = []
+            continue
+
+        split_units = [
+            _TextUnit(kind=unit.kind, text=piece)
+            for piece in _split_long_text_unit(unit.text, max_chars=available_chars)
+        ]
+        if len(split_units) <= 1:
+            current = split_units
+            idx += 1
+            continue
+        working[idx : idx + 1] = split_units
+
+    if current:
+        chunk_text = _render_section_chunk_text(heading, _join_text_units(current))
+        if chunk_text:
+            chunks.append(chunk_text)
+
+    return [_clean_text(chunk_text) for chunk_text in chunks if _clean_text(chunk_text)]
+
+
+def _markdown_table_to_structured_text(table_text: str) -> str:
+    lines = [line.rstrip() for line in _clean_text(table_text).splitlines() if line.strip()]
+    if len(lines) < 2:
+        return _clean_text(table_text)
+
+    columns = _table_cells(lines[0])
+    rows = lines[2:]
+    if not columns or not rows:
+        return _clean_text(table_text)
+
+    rendered_rows: List[str] = [f"Table columns: {', '.join(columns)}"]
+    for idx, row in enumerate(rows, start=1):
+        values = _table_cells(row)
+        pairs: List[str] = []
+        for col_index, column in enumerate(columns):
+            value = values[col_index] if col_index < len(values) else ""
+            value = re.sub(r"\s+", " ", value).strip()
+            if value:
+                pairs.append(f"{column}: {value}")
+        if pairs:
+            rendered_rows.append(f"- Row {idx}: " + "; ".join(pairs))
+
+    return _clean_text("\n".join(rendered_rows))
+
+
+def _split_table_block_for_heading(table_text: str, *, heading: str, max_chars: int) -> List[str]:
+    clean_table = _clean_text(table_text)
+    if not clean_table:
+        return []
+
+    lines = clean_table.splitlines()
+    if len(lines) < 2:
+        return [clean_table]
+
+    header = lines[0]
+    separator = lines[1]
+    rows = lines[2:]
+    if not rows:
+        return [clean_table]
+
+    def candidate_length(candidate_rows: List[str]) -> int:
+        markdown = "\n".join([header, separator] + candidate_rows)
+        structured = _markdown_table_to_structured_text(markdown)
+        return len(_render_section_chunk_text(heading, structured))
+
+    segments: List[str] = []
+    current_rows: List[str] = []
+    for row in rows:
+        proposed = current_rows + [row]
+        if candidate_length(proposed) <= max_chars or not current_rows:
+            current_rows = proposed
+            continue
+        segments.append("\n".join([header, separator] + current_rows))
+        current_rows = [row]
+
+    if current_rows:
+        segments.append("\n".join([header, separator] + current_rows))
+
+    return [_clean_text(segment) for segment in segments if _clean_text(segment)]
+
+
+def _build_policy_section_chunks(
+    section: _PolicySection,
+    *,
+    max_chars: int,
+    overlap_target_chars: int,
+) -> List[_SectionChunk]:
+    section_chunks: List[_SectionChunk] = []
+    for block in _extract_chunk_blocks(section.body_text):
+        if block.kind == "table":
+            for table_segment in _split_table_block_for_heading(block.text, heading=section.heading, max_chars=max_chars):
+                structured_table = _markdown_table_to_structured_text(table_segment)
+                chunk_text = _render_section_chunk_text(section.heading, structured_table)
+                if chunk_text:
+                    section_chunks.append(
+                        _SectionChunk(
+                            chunk_text=chunk_text,
+                            chunk_type="table",
+                            table_present=True,
+                            table_markdown=table_segment,
+                            page_start=section.page_start,
+                            page_end=section.page_end,
+                        )
+                    )
+            continue
+
+        text_units = _extract_text_units(block.text)
+        for chunk_text in _chunk_text_units(
+            section.heading,
+            text_units,
+            max_chars=max_chars,
+            overlap_target_chars=overlap_target_chars,
+        ):
+            section_chunks.append(
+                _SectionChunk(
+                    chunk_text=chunk_text,
+                    chunk_type="text",
+                    table_present=False,
+                    page_start=section.page_start,
+                    page_end=section.page_end,
+                )
+            )
+
+    return section_chunks
+
+
 def _to_list(value) -> List:
     if value is None:
         return []
@@ -213,6 +554,19 @@ def chunk_oscal_controls(oscal_df: pd.DataFrame) -> pd.DataFrame:
         family = str(row.get("family", "") or "")
         doc_id = control_id or None
         doc_title = title or control_id or "OSCAL Control"
+        source_file = str(row.get("source_file", "") or "").strip() or None
+        chunk_index = 0
+
+        def append_record(record: ChunkRecord) -> None:
+            nonlocal chunk_index
+            chunk_index += 1
+            record.source_document_id = doc_id
+            record.title = doc_title
+            record.source_file = source_file
+            record.chunk_index = chunk_index
+            if not record.chunk_type:
+                record.chunk_type = record.control_part or "text"
+            records.append(record)
 
         statement = _clean_text(str(row.get("statement", "") or ""))
         guidance = _clean_text(str(row.get("guidance", "") or ""))
@@ -220,7 +574,7 @@ def chunk_oscal_controls(oscal_df: pd.DataFrame) -> pd.DataFrame:
         parameters = _to_list(row.get("parameters", []))
 
         if statement:
-            records.append(
+            append_record(
                 ChunkRecord(
                     chunk_id=_stable_chunk_id("oscal", [control_id, "statement", statement[:120]]),
                     chunk_text=statement,
@@ -232,12 +586,13 @@ def chunk_oscal_controls(oscal_df: pd.DataFrame) -> pd.DataFrame:
                     doc_title=doc_title,
                     section_path=f"{control_id} Statement" if control_id else "Statement",
                     section_type="controls",
+                    chunk_type="statement",
                     chunk_len_chars=len(statement),
                 )
             )
 
         if guidance:
-            records.append(
+            append_record(
                 ChunkRecord(
                     chunk_id=_stable_chunk_id("oscal", [control_id, "guidance", guidance[:120]]),
                     chunk_text=guidance,
@@ -249,6 +604,7 @@ def chunk_oscal_controls(oscal_df: pd.DataFrame) -> pd.DataFrame:
                     doc_title=doc_title,
                     section_path=f"{control_id} Guidance" if control_id else "Guidance",
                     section_type="controls",
+                    chunk_type="guidance",
                     chunk_len_chars=len(guidance),
                 )
             )
@@ -262,7 +618,7 @@ def chunk_oscal_controls(oscal_df: pd.DataFrame) -> pd.DataFrame:
             section = f"Enhancement {enh_id}" if enh_id else "Enhancement"
             if enh_title:
                 section = f"{section}: {enh_title}"
-            records.append(
+            append_record(
                 ChunkRecord(
                     chunk_id=_stable_chunk_id("oscal", [control_id, "enhancement", enh_id, enh_statement[:120]]),
                     chunk_text=enh_statement,
@@ -275,6 +631,7 @@ def chunk_oscal_controls(oscal_df: pd.DataFrame) -> pd.DataFrame:
                     doc_title=doc_title,
                     section_path=section,
                     section_type="controls",
+                    chunk_type="enhancement",
                     chunk_len_chars=len(enh_statement),
                 )
             )
@@ -283,7 +640,7 @@ def chunk_oscal_controls(oscal_df: pd.DataFrame) -> pd.DataFrame:
             param_text = _clean_text(str(param))
             if not param_text:
                 continue
-            records.append(
+            append_record(
                 ChunkRecord(
                     chunk_id=_stable_chunk_id("oscal", [control_id, "parameter", str(idx), param_text[:120]]),
                     chunk_text=param_text,
@@ -295,6 +652,7 @@ def chunk_oscal_controls(oscal_df: pd.DataFrame) -> pd.DataFrame:
                     doc_title=doc_title,
                     section_path=f"{control_id} Parameter {idx}" if control_id else f"Parameter {idx}",
                     section_type="controls",
+                    chunk_type="parameter",
                     chunk_len_chars=len(param_text),
                 )
             )
@@ -346,24 +704,38 @@ def _markdown_sections(md_text: str, *, doc_title: str) -> List[_PolicySection]:
     current_section = doc_title
     current_parent = doc_title
     body_lines: List[str] = []
+    current_page: Optional[int] = None
+    section_page_start: Optional[int] = None
+    section_page_end: Optional[int] = None
 
     def flush() -> None:
-        nonlocal body_lines
+        nonlocal body_lines, section_page_start, section_page_end
         text = _clean_text("\n".join(body_lines))
         if text:
-            chunk_text = _clean_text(f"{current_heading}\n\n{text}")
             sections.append(
                 _PolicySection(
                     heading=current_heading,
                     heading_level=current_level,
                     section_path=current_section,
                     parent_path=current_parent,
-                    chunk_text=chunk_text,
+                    body_text=text,
+                    page_start=section_page_start,
+                    page_end=section_page_end,
                 )
             )
         body_lines = []
+        section_page_start = None
+        section_page_end = None
 
     for line in lines:
+        page_num = _page_number_from_line(line)
+        if page_num is not None:
+            current_page = page_num
+            if section_page_start is None:
+                section_page_start = page_num
+            section_page_end = page_num
+            continue
+
         m = HEADING_RE.match(line)
         if m:
             flush()
@@ -380,56 +752,13 @@ def _markdown_sections(md_text: str, *, doc_title: str) -> List[_PolicySection]:
             current_section, current_parent = _format_path(doc_title, heading_stack)
         else:
             body_lines.append(line)
+            if (line or "").strip():
+                if section_page_start is None:
+                    section_page_start = current_page
+                section_page_end = current_page if current_page is not None else section_page_end
 
     flush()
     return sections
-
-
-def _find_next_sibling_index(sections: List[_PolicySection], index: int) -> Optional[int]:
-    current = sections[index]
-    for idx in range(index + 1, len(sections)):
-        candidate = sections[idx]
-        if (
-            candidate.heading_level == current.heading_level
-            and candidate.parent_path == current.parent_path
-        ):
-            return idx
-    return None
-
-
-def _merge_tiny_policy_sections(
-    sections: List[_PolicySection],
-    *,
-    min_chars: int,
-) -> List[_PolicySection]:
-    if not sections:
-        return []
-    working = list(sections)
-    merged: List[_PolicySection] = []
-
-    idx = 0
-    while idx < len(working):
-        current = working[idx]
-
-        if len(current.chunk_text) < min_chars:
-            sibling_idx = _find_next_sibling_index(working, idx)
-            if sibling_idx is None and idx + 1 < len(working):
-                # Fallback: if no formal sibling exists, merge into the next section
-                # to avoid noisy standalone metadata/prelude chunks.
-                sibling_idx = idx + 1
-            if sibling_idx is not None:
-                sibling = working.pop(sibling_idx)
-                current.chunk_text = _clean_text(f"{current.chunk_text}\n\n{sibling.chunk_text}")
-                continue
-            if merged:
-                merged[-1].chunk_text = _clean_text(f"{merged[-1].chunk_text}\n\n{current.chunk_text}")
-                idx += 1
-                continue
-
-        merged.append(current)
-        idx += 1
-
-    return merged
 
 
 def _split_long_paragraph(paragraph: str, max_chars: int) -> List[str]:
@@ -452,154 +781,6 @@ def _split_long_paragraph(paragraph: str, max_chars: int) -> List[str]:
     return pieces
 
 
-def _split_text_block(text: str, *, max_chars: int) -> List[str]:
-    clean = _clean_text(text)
-    if not clean:
-        return []
-    if len(clean) <= max_chars:
-        return [clean]
-
-    paragraphs = [p.strip() for p in PARAGRAPH_SPLIT_RE.split(clean) if p.strip()]
-    if not paragraphs:
-        return _split_long_paragraph(clean, max_chars)
-
-    out: List[str] = []
-    current = ""
-    for paragraph in paragraphs:
-        if len(paragraph) > max_chars:
-            if current:
-                out.append(current)
-                current = ""
-            out.extend(_split_long_paragraph(paragraph, max_chars))
-            continue
-
-        candidate = paragraph if not current else f"{current}\n\n{paragraph}"
-        if len(candidate) <= max_chars:
-            current = candidate
-        else:
-            if current:
-                out.append(current)
-            current = paragraph
-
-    if current:
-        out.append(current)
-    return [_clean_text(text) for text in out if _clean_text(text)]
-
-
-def _split_table_block_by_rows(table_text: str, *, max_chars: int) -> List[str]:
-    clean_table = _clean_text(table_text)
-    if not clean_table:
-        return []
-    if len(clean_table) <= max_chars:
-        return [clean_table]
-
-    lines = clean_table.splitlines()
-    if len(lines) < 2:
-        return _split_long_paragraph(clean_table, max_chars)
-
-    header = lines[0]
-    separator = lines[1]
-    rows = lines[2:]
-
-    base_table = f"{header}\n{separator}"
-    if len(base_table) >= max_chars:
-        return [clean_table]
-    if not rows:
-        return [clean_table]
-
-    segments: List[str] = []
-    current_rows: List[str] = []
-
-    for row in rows:
-        candidate_rows = current_rows + [row]
-        candidate = "\n".join([header, separator] + candidate_rows)
-        if len(candidate) <= max_chars or not current_rows:
-            current_rows = candidate_rows
-            continue
-
-        segments.append("\n".join([header, separator] + current_rows))
-        current_rows = [row]
-
-    if current_rows:
-        segments.append("\n".join([header, separator] + current_rows))
-
-    return [_clean_text(segment) for segment in segments if _clean_text(segment)]
-
-
-def _split_chunk_text_by_paragraphs(chunk_text: str, *, max_chars: int) -> List[str]:
-    clean = _clean_text(chunk_text)
-    if not clean:
-        return []
-    if len(clean) <= max_chars:
-        return [clean]
-
-    blocks = _extract_chunk_blocks(clean)
-    if not blocks:
-        return _split_text_block(clean, max_chars=max_chars)
-
-    parts: List[str] = []
-    for block in blocks:
-        if block.kind == "table":
-            parts.extend(_split_table_block_by_rows(block.text, max_chars=max_chars))
-        else:
-            parts.extend(_split_text_block(block.text, max_chars=max_chars))
-
-    out: List[str] = []
-    current = ""
-    for part in parts:
-        clean_part = _clean_text(part)
-        if not clean_part:
-            continue
-
-        if not current:
-            if len(clean_part) <= max_chars:
-                current = clean_part
-            else:
-                out.append(clean_part)
-            continue
-
-        candidate = f"{current}\n\n{clean_part}"
-        if len(candidate) <= max_chars:
-            current = candidate
-            continue
-
-        out.append(_clean_text(current))
-        if len(clean_part) <= max_chars:
-            current = clean_part
-        else:
-            out.append(clean_part)
-            current = ""
-
-    if current:
-        out.append(_clean_text(current))
-
-    return out
-
-
-def _split_large_policy_sections(
-    sections: List[_PolicySection],
-    *,
-    max_chars: int,
-) -> List[_PolicySection]:
-    split_sections: List[_PolicySection] = []
-    for section in sections:
-        parts = _split_chunk_text_by_paragraphs(section.chunk_text, max_chars=max_chars)
-        if len(parts) <= 1:
-            split_sections.append(section)
-            continue
-        for part in parts:
-            split_sections.append(
-                _PolicySection(
-                    heading=section.heading,
-                    heading_level=section.heading_level,
-                    section_path=section.section_path,
-                    parent_path=section.parent_path,
-                    chunk_text=part,
-                )
-            )
-    return split_sections
-
-
 def chunk_policy_markdown_files(md_paths: Iterable[Path]) -> pd.DataFrame:
     records: List[ChunkRecord] = []
     for md_path in md_paths:
@@ -607,29 +788,50 @@ def chunk_policy_markdown_files(md_paths: Iterable[Path]) -> pd.DataFrame:
         doc_id = md_path.stem
         doc_title = _infer_doc_title(text.splitlines(), fallback=_default_doc_title(doc_id))
         sections = _markdown_sections(text, doc_title=doc_title)
-        sections = _merge_tiny_policy_sections(sections, min_chars=POLICY_MIN_CHUNK_CHARS)
-        sections = _split_large_policy_sections(sections, max_chars=POLICY_MAX_CHUNK_CHARS)
 
-        for idx, section in enumerate(sections, start=1):
-            chunk_text = section.chunk_text
-            section_path = section.section_path
-            table_present = _chunk_contains_markdown_table(chunk_text)
+        chunk_index = 0
+        for section in sections:
             section_type = _infer_policy_section_type(section.heading)
-            records.append(
-                ChunkRecord(
-                    chunk_id=_stable_chunk_id("policy", [doc_id, str(idx), section_path, chunk_text[:120]]),
-                    chunk_text=chunk_text,
-                    source_type="policy_pdf",
-                    doc_id=doc_id,
-                    doc_title=doc_title,
-                    section_path=section_path,
-                    heading=section.heading,
-                    heading_level=section.heading_level,
-                    section_type=section_type,
-                    chunk_len_chars=len(chunk_text),
-                    table_present=table_present,
-                )
+            section_chunks = _build_policy_section_chunks(
+                section,
+                max_chars=POLICY_MAX_CHUNK_CHARS,
+                overlap_target_chars=POLICY_OVERLAP_TARGET_CHARS,
             )
+            for section_chunk in section_chunks:
+                chunk_index += 1
+                chunk_text = section_chunk.chunk_text
+                records.append(
+                    ChunkRecord(
+                        chunk_id=_stable_chunk_id(
+                            "policy",
+                            [
+                                doc_id,
+                                str(chunk_index),
+                                section.section_path,
+                                section_chunk.chunk_type,
+                                chunk_text[:120],
+                            ],
+                        ),
+                        chunk_text=chunk_text,
+                        source_type="policy_pdf",
+                        doc_id=doc_id,
+                        doc_title=doc_title,
+                        source_document_id=doc_id,
+                        title=doc_title,
+                        source_file=str(md_path),
+                        section_path=section.section_path,
+                        heading=section.heading,
+                        heading_level=section.heading_level,
+                        section_type=section_type,
+                        chunk_type=section_chunk.chunk_type,
+                        chunk_index=chunk_index,
+                        chunk_len_chars=len(chunk_text),
+                        table_present=section_chunk.table_present,
+                        table_markdown=section_chunk.table_markdown,
+                        page_start=section_chunk.page_start,
+                        page_end=section_chunk.page_end,
+                    )
+                )
     return pd.DataFrame([r.__dict__ for r in records])
 
 
@@ -645,6 +847,100 @@ def load_policy_markdown_paths(repo_root: Path) -> List[Path]:
             if files:
                 return files
     return []
+
+
+def _length_distribution(lengths: pd.Series) -> Dict[str, int]:
+    clean = lengths.dropna().astype(int)
+    if clean.empty:
+        return {
+            "min": 0,
+            "p25": 0,
+            "median": 0,
+            "p75": 0,
+            "p90": 0,
+            "max": 0,
+        }
+    quantiles = clean.quantile([0.25, 0.5, 0.75, 0.9]).to_dict()
+    return {
+        "min": int(clean.min()),
+        "p25": int(round(float(quantiles.get(0.25, clean.min())))),
+        "median": int(round(float(quantiles.get(0.5, clean.median())))),
+        "p75": int(round(float(quantiles.get(0.75, clean.max())))),
+        "p90": int(round(float(quantiles.get(0.9, clean.max())))),
+        "max": int(clean.max()),
+    }
+
+
+def _sample_chunk_preview(text: str, *, max_chars: int = DIAGNOSTIC_SAMPLE_CHARS) -> str:
+    normalized = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(normalized) <= max_chars:
+        return normalized
+    return normalized[: max_chars - 3].rstrip() + "..."
+
+
+def build_chunk_diagnostics(chunks_df: pd.DataFrame, *, sample_per_source: int = 2) -> Dict:
+    if chunks_df.empty:
+        return {
+            "total_chunks": 0,
+            "table_chunks": 0,
+            "chunk_length_chars": _length_distribution(pd.Series(dtype=int)),
+            "chunks_per_source_file": [],
+            "sample_chunks": [],
+        }
+
+    working = chunks_df.copy()
+    working["chunk_len_chars"] = working["chunk_len_chars"].fillna(
+        working["chunk_text"].astype(str).str.len()
+    ).astype(int)
+    if "chunk_type" not in working.columns:
+        working["chunk_type"] = "text"
+    working["chunk_type"] = working["chunk_type"].fillna("text").astype(str)
+    if "table_present" not in working.columns:
+        working["table_present"] = False
+    working["table_present"] = working["table_present"].fillna(False).astype(bool)
+    working["_source_key"] = (
+        working.get("source_file", pd.Series(index=working.index, dtype="object"))
+        .fillna(working.get("doc_id", pd.Series(index=working.index, dtype="object")))
+        .fillna("unknown")
+        .astype(str)
+    )
+
+    per_source: List[Dict] = []
+    sample_chunks: List[Dict] = []
+    for source_key, group in working.groupby("_source_key", sort=True):
+        source_table_mask = (group["chunk_type"] == "table") | group["table_present"]
+        per_source.append(
+            {
+                "source_file": None if source_key == "unknown" else source_key,
+                "doc_ids": sorted({str(v) for v in group["doc_id"].dropna().astype(str) if str(v)}),
+                "titles": sorted({str(v) for v in group["doc_title"].dropna().astype(str) if str(v)}),
+                "total_chunks": int(len(group)),
+                "table_chunks": int(source_table_mask.sum()),
+                "chunk_length_chars": _length_distribution(group["chunk_len_chars"]),
+            }
+        )
+        for _, row in group.head(sample_per_source).iterrows():
+            sample_chunks.append(
+                {
+                    "source_file": row.get("source_file"),
+                    "doc_id": row.get("doc_id"),
+                    "title": row.get("doc_title") or row.get("title"),
+                    "section_path": row.get("section_path"),
+                    "chunk_type": row.get("chunk_type"),
+                    "chunk_index": row.get("chunk_index"),
+                    "chunk_len_chars": int(row.get("chunk_len_chars", 0) or 0),
+                    "preview": _sample_chunk_preview(str(row.get("chunk_text", ""))),
+                }
+            )
+
+    table_mask = (working["chunk_type"] == "table") | working["table_present"]
+    return {
+        "total_chunks": int(len(working)),
+        "table_chunks": int(table_mask.sum()),
+        "chunk_length_chars": _length_distribution(working["chunk_len_chars"]),
+        "chunks_per_source_file": per_source,
+        "sample_chunks": sample_chunks,
+    }
 
 
 def build_chunks_dataframe(
@@ -669,6 +965,18 @@ def build_chunks_dataframe(
     all_chunks = all_chunks.dropna(subset=["chunk_id", "chunk_text"])
     all_chunks["chunk_text"] = all_chunks["chunk_text"].astype(str).map(_clean_text)
     all_chunks["chunk_len_chars"] = all_chunks["chunk_text"].str.len()
+    if "source_document_id" not in all_chunks.columns:
+        all_chunks["source_document_id"] = all_chunks.get("doc_id")
+    all_chunks["source_document_id"] = all_chunks["source_document_id"].fillna(all_chunks.get("doc_id"))
+    if "title" not in all_chunks.columns:
+        all_chunks["title"] = all_chunks.get("doc_title")
+    all_chunks["title"] = all_chunks["title"].fillna(all_chunks.get("doc_title"))
+    if "chunk_type" not in all_chunks.columns:
+        all_chunks["chunk_type"] = "text"
+    all_chunks["chunk_type"] = all_chunks["chunk_type"].fillna("text").astype(str)
+    if "chunk_index" not in all_chunks.columns:
+        all_chunks["chunk_index"] = range(1, len(all_chunks) + 1)
+    all_chunks["chunk_index"] = pd.to_numeric(all_chunks["chunk_index"], errors="coerce").fillna(0).astype(int)
     if "section_type" not in all_chunks.columns:
         all_chunks["section_type"] = "other"
     all_chunks["section_type"] = (
@@ -681,6 +989,8 @@ def build_chunks_dataframe(
     if "table_present" not in all_chunks.columns:
         all_chunks["table_present"] = False
     all_chunks["table_present"] = all_chunks["table_present"].fillna(False).astype(bool)
+    if "table_markdown" not in all_chunks.columns:
+        all_chunks["table_markdown"] = None
     all_chunks = all_chunks.drop_duplicates(subset=["chunk_id"]).reset_index(drop=True)
     return all_chunks
 
@@ -688,6 +998,7 @@ def build_chunks_dataframe(
 def main() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     chunks = build_chunks_dataframe(repo_root)
+    diagnostics = build_chunk_diagnostics(chunks)
     out_dir = repo_root / "data/index"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "chunks.parquet"
@@ -696,6 +1007,7 @@ def main() -> None:
         "rows": int(len(chunks)),
         "source_counts": chunks["source_type"].value_counts().to_dict(),
         "output": str(out_path),
+        "diagnostics": diagnostics,
     }
     print(json.dumps(summary, indent=2))
 

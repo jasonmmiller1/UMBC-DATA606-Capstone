@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 from pathlib import Path
 import uuid
@@ -10,7 +11,7 @@ import pandas as pd
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
-from app.ingest.chunkers import build_chunks_dataframe
+from app.ingest.chunkers import build_chunk_diagnostics, build_chunks_dataframe
 from app.index.qdrant_schema import DEFAULT_COLLECTION, ensure_collection
 from app.utils.embeddings import embed_texts
 
@@ -32,12 +33,18 @@ def _payload_from_row(row: pd.Series) -> Dict:
         "control_family": row.get("control_family"),
         "doc_id": row.get("doc_id"),
         "doc_title": row.get("doc_title"),
+        "source_document_id": row.get("source_document_id"),
+        "title": row.get("title"),
+        "source_file": row.get("source_file"),
         "section_path": row.get("section_path"),
         "heading": row.get("heading"),
         "heading_level": row.get("heading_level"),
         "section_type": row.get("section_type"),
+        "chunk_type": row.get("chunk_type"),
+        "chunk_index": row.get("chunk_index"),
         "chunk_len_chars": row.get("chunk_len_chars"),
         "table_present": row.get("table_present"),
+        "table_markdown": row.get("table_markdown"),
         "page_start": row.get("page_start"),
         "page_end": row.get("page_end"),
         "chunk_id": row.get("chunk_id"),
@@ -95,6 +102,8 @@ def main() -> None:
     chunks_path = out_dir / "chunks.parquet"
     chunks.to_parquet(chunks_path, index=False)
     print(f"Saved chunks dataframe: {chunks_path} rows={len(chunks)}")
+    print("Chunk diagnostics:")
+    print(json.dumps(build_chunk_diagnostics(chunks), indent=2))
 
     client = QdrantClient(host=args.host, port=args.port)
     index_chunks(

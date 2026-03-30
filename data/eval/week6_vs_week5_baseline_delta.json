@@ -1,0 +1,3795 @@
+{
+  "baseline_label": "week5_baseline",
+  "current_label": "week6_default",
+  "baseline_results_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week5_baseline_results.jsonl",
+  "current_results_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/week6_default_eval_results.jsonl",
+  "current_retrieval_config": {
+    "top_k": 10,
+    "dense_k": 20,
+    "bm25_k": 20,
+    "rrf_k": 60,
+    "dense_weight": 1.0,
+    "bm25_weight": 1.0,
+    "policy_section_weighting_enabled": true,
+    "policy_low_signal_multiplier": 0.6,
+    "policy_high_signal_multiplier": 1.1,
+    "rerank_enabled": true,
+    "rerank_intents": [
+      "policy"
+    ],
+    "rerank_candidates": 20,
+    "rerank_control_match_boost": 0.25,
+    "rerank_heading_overlap_boost": 0.04,
+    "rerank_low_signal_penalty": 0.08
+  },
+  "summary": {
+    "baseline": {
+      "total_questions": 40,
+      "error_count": 0,
+      "abstained_count": 10,
+      "engine_counts": {
+        "answer_question": 40
+      },
+      "avg_context_precision": 0.6577,
+      "avg_coverage_accuracy": 0.975,
+      "avg_abstention": 1.0,
+      "avg_overall": 0.8776,
+      "by_mode": {
+        "framework": {
+          "n": 10,
+          "avg_context_precision": 1.0,
+          "avg_coverage_accuracy": 1.0,
+          "avg_abstention": 1.0,
+          "avg_overall": 1.0
+        },
+        "policy": {
+          "n": 10,
+          "avg_context_precision": 0.4033,
+          "avg_coverage_accuracy": 1.0,
+          "avg_abstention": 1.0,
+          "avg_overall": 0.8011
+        },
+        "policy_vs_control": {
+          "n": 10,
+          "avg_context_precision": 0.4274,
+          "avg_coverage_accuracy": 0.9,
+          "avg_abstention": 1.0,
+          "avg_overall": 0.7758
+        },
+        "out_of_scope_policy": {
+          "n": 10,
+          "avg_context_precision": 0.8,
+          "avg_coverage_accuracy": 1.0,
+          "avg_abstention": 1.0,
+          "avg_overall": 0.9333
+        }
+      }
+    },
+    "current": {
+      "total_questions": 40,
+      "error_count": 0,
+      "abstained_count": 10,
+      "engine_counts": {
+        "answer_question": 40
+      },
+      "avg_context_precision": 0.7218,
+      "avg_coverage_accuracy": 0.975,
+      "avg_abstention": 1.0,
+      "avg_overall": 0.8989,
+      "by_mode": {
+        "framework": {
+          "n": 10,
+          "avg_context_precision": 1.0,
+          "avg_coverage_accuracy": 1.0,
+          "avg_abstention": 1.0,
+          "avg_overall": 1.0
+        },
+        "policy": {
+          "n": 10,
+          "avg_context_precision": 0.4416,
+          "avg_coverage_accuracy": 1.0,
+          "avg_abstention": 1.0,
+          "avg_overall": 0.8139
+        },
+        "policy_vs_control": {
+          "n": 10,
+          "avg_context_precision": 0.6456,
+          "avg_coverage_accuracy": 0.9,
+          "avg_abstention": 1.0,
+          "avg_overall": 0.8485
+        },
+        "out_of_scope_policy": {
+          "n": 10,
+          "avg_context_precision": 0.8,
+          "avg_coverage_accuracy": 1.0,
+          "avg_abstention": 1.0,
+          "avg_overall": 0.9333
+        }
+      }
+    },
+    "delta": {
+      "avg_context_precision": 0.0641,
+      "avg_coverage_accuracy": 0.0,
+      "avg_abstention": 0.0,
+      "avg_overall": 0.0213,
+      "abstained_count": 0,
+      "error_count": 0
+    }
+  },
+  "by_mode": {
+    "framework": {
+      "baseline": {
+        "n": 10,
+        "avg_context_precision": 1.0,
+        "avg_coverage_accuracy": 1.0,
+        "avg_abstention": 1.0,
+        "avg_overall": 1.0
+      },
+      "current": {
+        "n": 10,
+        "avg_context_precision": 1.0,
+        "avg_coverage_accuracy": 1.0,
+        "avg_abstention": 1.0,
+        "avg_overall": 1.0
+      },
+      "delta": {
+        "avg_context_precision": 0.0,
+        "avg_coverage_accuracy": 0.0,
+        "avg_abstention": 0.0,
+        "avg_overall": 0.0
+      }
+    },
+    "out_of_scope_policy": {
+      "baseline": {
+        "n": 10,
+        "avg_context_precision": 0.8,
+        "avg_coverage_accuracy": 1.0,
+        "avg_abstention": 1.0,
+        "avg_overall": 0.9333
+      },
+      "current": {
+        "n": 10,
+        "avg_context_precision": 0.8,
+        "avg_coverage_accuracy": 1.0,
+        "avg_abstention": 1.0,
+        "avg_overall": 0.9333
+      },
+      "delta": {
+        "avg_context_precision": 0.0,
+        "avg_coverage_accuracy": 0.0,
+        "avg_abstention": 0.0,
+        "avg_overall": 0.0
+      }
+    },
+    "policy": {
+      "baseline": {
+        "n": 10,
+        "avg_context_precision": 0.4033,
+        "avg_coverage_accuracy": 1.0,
+        "avg_abstention": 1.0,
+        "avg_overall": 0.8011
+      },
+      "current": {
+        "n": 10,
+        "avg_context_precision": 0.4416,
+        "avg_coverage_accuracy": 1.0,
+        "avg_abstention": 1.0,
+        "avg_overall": 0.8139
+      },
+      "delta": {
+        "avg_context_precision": 0.0383,
+        "avg_coverage_accuracy": 0.0,
+        "avg_abstention": 0.0,
+        "avg_overall": 0.0128
+      }
+    },
+    "policy_vs_control": {
+      "baseline": {
+        "n": 10,
+        "avg_context_precision": 0.4274,
+        "avg_coverage_accuracy": 0.9,
+        "avg_abstention": 1.0,
+        "avg_overall": 0.7758
+      },
+      "current": {
+        "n": 10,
+        "avg_context_precision": 0.6456,
+        "avg_coverage_accuracy": 0.9,
+        "avg_abstention": 1.0,
+        "avg_overall": 0.8485
+      },
+      "delta": {
+        "avg_context_precision": 0.2182,
+        "avg_coverage_accuracy": 0.0,
+        "avg_abstention": 0.0,
+        "avg_overall": 0.0727
+      }
+    }
+  },
+  "question_counts": {
+    "shared_questions": 40,
+    "improved": 12,
+    "regressed": 1,
+    "unchanged": 27,
+    "material_improved": 7,
+    "material_regressed": 0
+  },
+  "question_deltas": [
+    {
+      "id": "gq023",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "What is our coverage for AC-6 using current policy artifacts?",
+      "baseline_scores": {
+        "context_precision": 0.1875,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.7292
+      },
+      "current_scores": {
+        "context_precision": 0.625,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.875
+      },
+      "delta_scores": {
+        "context_precision": 0.4375,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.1458
+      },
+      "baseline_citation_count": 8,
+      "current_citation_count": 8,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::aa1de4d34cb082ba",
+        "oscal::9dcb70b63d64a69f",
+        "oscal::5920d4247c2c800c",
+        "policy::8bc5db34592d1a4a",
+        "policy::f3dff03ff6c80df0",
+        "policy::996ef283d639ccd1",
+        "policy::d97a4428f49ae01d",
+        "policy::0f4fbee3ea85326d"
+      ],
+      "current_citation_ids": [
+        "oscal::aa1de4d34cb082ba",
+        "oscal::9dcb70b63d64a69f",
+        "oscal::5920d4247c2c800c",
+        "policy::c84511d607b12d2a",
+        "policy::706c72351be0c466",
+        "policy::46cb74058f99835e",
+        "policy::996ef283d639ccd1",
+        "policy::2a48913c44c22eac"
+      ],
+      "new_citation_ids": [
+        "policy::2a48913c44c22eac",
+        "policy::46cb74058f99835e",
+        "policy::706c72351be0c466",
+        "policy::c84511d607b12d2a"
+      ],
+      "dropped_citation_ids": [
+        "policy::0f4fbee3ea85326d",
+        "policy::8bc5db34592d1a4a",
+        "policy::d97a4428f49ae01d",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Coverage: covered Evidence: - [C1] [statement] Employ the principle of least privilege, allowing only authorized accesses for users (or processes acting on behalf of users) that are necessary to accomplish assigned ... - [C2] [statement] Prevent non-privileged users from executing privileged functio",
+      "current_answer_preview": "Coverage: covered Evidence: - [C1] [statement] Employ the principle of least privilege, allowing only authorized accesses for users (or processes acting on behalf of users) that are necessary to accomplish assigned ... - [C2] [statement] Prevent non-privileged users from executing privileged functio",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::aa1de4d34cb082ba",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "AC-6 Statement",
+          "chunk_type": "statement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::9dcb70b63d64a69f",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "Enhancement AC-6.10: Prohibit Non-privileged Users from Executing Privileged Functions",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::b200f823ffd4c045",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "Enhancement AC-6.8: Privilege Levels for Code Execution",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::5920d4247c2c800c",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "AC-6 Guidance",
+          "chunk_type": "guidance",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::0e7ac224ab225c9c",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "Enhancement AC-6.1: Authorize Access to Security Functions",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": "higher context precision; 4 new cited chunks; 4 dropped cited chunks; current policy sections include Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements"
+    },
+    {
+      "id": "gq025",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "Is AU-6 fully addressed by our logging standard?",
+      "baseline_scores": {
+        "context_precision": 0.5714,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8571
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.4286,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.1429
+      },
+      "baseline_citation_count": 7,
+      "current_citation_count": 5,
+      "citation_count_delta": -2,
+      "baseline_citation_ids": [
+        "oscal::0478da2da011ee4a",
+        "oscal::30e126df70ea9907",
+        "policy::b5987f24b0684964",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::d97a4428f49ae01d",
+        "policy::ad7516675349e2d7",
+        "policy::996ef283d639ccd1"
+      ],
+      "current_citation_ids": [
+        "oscal::0478da2da011ee4a",
+        "oscal::30e126df70ea9907",
+        "policy::b5987f24b0684964",
+        "policy::224efd4664bcb8cd",
+        "policy::cd1f5c9e9212829e"
+      ],
+      "new_citation_ids": [
+        "policy::224efd4664bcb8cd",
+        "policy::cd1f5c9e9212829e"
+      ],
+      "dropped_citation_ids": [
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::996ef283d639ccd1",
+        "policy::ad7516675349e2d7",
+        "policy::d97a4428f49ae01d"
+      ],
+      "baseline_answer_preview": "Coverage: partial Evidence: - [C1] [statement] Correlate information from nontechnical sources with audit record information to enhance organization-wide situational awareness. - [C2] [statement] Analyze and correlate audit records across different repositories to gain organization-wide situational ",
+      "current_answer_preview": "Coverage: partial Evidence: - [C1] [statement] Correlate information from nontechnical sources with audit record information to enhance organization-wide situational awareness. - [C2] [statement] Analyze and correlate audit records across different repositories to gain organization-wide situational ",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::0478da2da011ee4a",
+          "source_type": "oscal_control",
+          "doc_id": "AU-6",
+          "doc_title": "Audit Record Review, Analysis, and Reporting",
+          "section_path": "Enhancement AU-6.9: Correlation with Information from Nontechnical Sources",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::59c6487260039419",
+          "source_type": "oscal_control",
+          "doc_id": "AU-6",
+          "doc_title": "Audit Record Review, Analysis, and Reporting",
+          "section_path": "Enhancement AU-6.3: Correlate Audit Record Repositories",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::d6da8ef54c7c1f16",
+          "source_type": "oscal_control",
+          "doc_id": "AU-6",
+          "doc_title": "Audit Record Review, Analysis, and Reporting",
+          "section_path": "Enhancement AU-6.4: Central Review and Analysis",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::91de4b143c129328",
+          "source_type": "oscal_control",
+          "doc_id": "AU-6",
+          "doc_title": "Audit Record Review, Analysis, and Reporting",
+          "section_path": "Enhancement AU-6.7: Permitted Actions",
+          "chunk_type": "enhancement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::f30dbb6c2415e505",
+          "source_type": "oscal_control",
+          "doc_id": "AU-6",
+          "doc_title": "Audit Record Review, Analysis, and Reporting",
+          "section_path": "Enhancement AU-6.8: Full Text Analysis of Privileged Commands",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": "higher context precision; 2 new cited chunks; 4 dropped cited chunks; current policy sections include Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)"
+    },
+    {
+      "id": "gq024",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "How well do our policies cover AU-2?",
+      "baseline_scores": {
+        "context_precision": 0.1111,
+        "coverage_accuracy": 0.0,
+        "abstention": 1.0,
+        "overall": 0.3704
+      },
+      "current_scores": {
+        "context_precision": 0.4444,
+        "coverage_accuracy": 0.0,
+        "abstention": 1.0,
+        "overall": 0.4815
+      },
+      "delta_scores": {
+        "context_precision": 0.3333,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.1111
+      },
+      "baseline_citation_count": 9,
+      "current_citation_count": 9,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::2fe81dff71e1ec09",
+        "oscal::41a71b392e0d362b",
+        "oscal::7a2e641b4efecd30",
+        "oscal::51a5f7e8db9aca64",
+        "oscal::9563dc9e31e86dcd",
+        "oscal::0444d7250113c3a3",
+        "policy::f3dff03ff6c80df0",
+        "policy::0187f5774a28cf9a",
+        "policy::744d0028af912550"
+      ],
+      "current_citation_ids": [
+        "oscal::2fe81dff71e1ec09",
+        "oscal::41a71b392e0d362b",
+        "oscal::f26bac6a418ef1a9",
+        "oscal::67b32c26f840425f",
+        "policy::224efd4664bcb8cd",
+        "policy::b5987f24b0684964",
+        "policy::067f591b72770b89",
+        "policy::c84511d607b12d2a",
+        "policy::fc927565ec409982"
+      ],
+      "new_citation_ids": [
+        "oscal::67b32c26f840425f",
+        "oscal::f26bac6a418ef1a9",
+        "policy::067f591b72770b89",
+        "policy::224efd4664bcb8cd",
+        "policy::b5987f24b0684964",
+        "policy::c84511d607b12d2a",
+        "policy::fc927565ec409982"
+      ],
+      "dropped_citation_ids": [
+        "oscal::0444d7250113c3a3",
+        "oscal::51a5f7e8db9aca64",
+        "oscal::7a2e641b4efecd30",
+        "oscal::9563dc9e31e86dcd",
+        "policy::0187f5774a28cf9a",
+        "policy::744d0028af912550",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Coverage: covered Evidence: - [C1] [guidance] An event is an observable occurrence in a system. The types of events that require logging are those events that are significant and relevant to the security of systems ... - [C2] [statement]   [item] Identify the types of events that the system is capab",
+      "current_answer_preview": "Coverage: covered Evidence: - [C1] [guidance] An event is an observable occurrence in a system. The types of events that require logging are those events that are significant and relevant to the security of systems ... - [C2] [statement]   [item] Identify the types of events that the system is capab",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::2fe81dff71e1ec09",
+          "source_type": "oscal_control",
+          "doc_id": "AU-2",
+          "doc_title": "Event Logging",
+          "section_path": "AU-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::41a71b392e0d362b",
+          "source_type": "oscal_control",
+          "doc_id": "AU-2",
+          "doc_title": "Event Logging",
+          "section_path": "AU-2 Statement",
+          "chunk_type": "statement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::f26bac6a418ef1a9",
+          "source_type": "oscal_control",
+          "doc_id": "AU-12",
+          "doc_title": "Audit Record Generation",
+          "section_path": "AU-12 Statement",
+          "chunk_type": "statement",
+          "rank": 7,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::67b32c26f840425f",
+          "source_type": "oscal_control",
+          "doc_id": "AU-12",
+          "doc_title": "Audit Record Generation",
+          "section_path": "AU-12 Guidance",
+          "chunk_type": "guidance",
+          "rank": 9,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "policy::224efd4664bcb8cd",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Logging Requirements",
+          "chunk_type": "text",
+          "rank": 1,
+          "score": 0.017741935483870968
+        }
+      ],
+      "note": "higher context precision; 7 new cited chunks; 7 dropped cited chunks; current policy sections include Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Logging Requirements"
+    },
+    {
+      "id": "gq022",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "Do our policies cover AC-3?",
+      "baseline_scores": {
+        "context_precision": 0.4,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8
+      },
+      "current_scores": {
+        "context_precision": 0.6667,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8889
+      },
+      "delta_scores": {
+        "context_precision": 0.2667,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0889
+      },
+      "baseline_citation_count": 5,
+      "current_citation_count": 6,
+      "citation_count_delta": 1,
+      "baseline_citation_ids": [
+        "oscal::509b6b3a0469152a",
+        "policy::d97a4428f49ae01d",
+        "policy::f3dff03ff6c80df0",
+        "policy::20cf134c13a537ee",
+        "policy::d49ad46daaaa0e94"
+      ],
+      "current_citation_ids": [
+        "oscal::509b6b3a0469152a",
+        "policy::c84511d607b12d2a",
+        "policy::46cb74058f99835e",
+        "policy::706c72351be0c466",
+        "policy::067f591b72770b89",
+        "policy::685491739c134cc9"
+      ],
+      "new_citation_ids": [
+        "policy::067f591b72770b89",
+        "policy::46cb74058f99835e",
+        "policy::685491739c134cc9",
+        "policy::706c72351be0c466",
+        "policy::c84511d607b12d2a"
+      ],
+      "dropped_citation_ids": [
+        "policy::20cf134c13a537ee",
+        "policy::d49ad46daaaa0e94",
+        "policy::d97a4428f49ae01d",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Coverage: covered Evidence: - [C1] [statement] Employ an audited override of automated access control mechanisms under {{ insert: param, ac-03.10_odp.01 }} by {{ insert: param, ac-03.10_odp.02 }}. - [C2] [statement]   [item] Enforce {{ insert: param, ac-3.15_prm_1 }} over the set of covered subjects",
+      "current_answer_preview": "Coverage: covered Evidence: - [C1] [statement] Employ an audited override of automated access control mechanisms under {{ insert: param, ac-03.10_odp.01 }} by {{ insert: param, ac-03.10_odp.02 }}. - [C2] [statement]   [item] Enforce {{ insert: param, ac-3.15_prm_1 }} over the set of covered subjects",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::509b6b3a0469152a",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.10: Audited Override of Access Control Mechanisms",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::668ba3e8dd90e953",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.15: Discretionary and Mandatory Access Control",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::e84f1f5cf22ccc68",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.7: Role-based Access Control",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::a52e09c40e9b0166",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.8: Revocation of Access Authorizations",
+          "chunk_type": "enhancement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::6c243a38679eb088",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.14: Individual Access",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": "higher context precision; 5 new cited chunks; 4 dropped cited chunks; current policy sections include Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements"
+    },
+    {
+      "id": "gq026",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "What is the expected coverage label for AU-11?",
+      "baseline_scores": {
+        "context_precision": 0.1364,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.7121
+      },
+      "current_scores": {
+        "context_precision": 0.4,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8
+      },
+      "delta_scores": {
+        "context_precision": 0.2636,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0879
+      },
+      "baseline_citation_count": 11,
+      "current_citation_count": 10,
+      "citation_count_delta": -1,
+      "baseline_citation_ids": [
+        "oscal::c7743e9fd4699459",
+        "oscal::acc2e6c3a11a2b77",
+        "oscal::04576714c76912d8",
+        "oscal::9ccfa37764422c79",
+        "oscal::9ca72f1f711886b5",
+        "oscal::f8123286fca61dfb",
+        "policy::d97a4428f49ae01d",
+        "policy::20cf134c13a537ee",
+        "policy::f3dff03ff6c80df0",
+        "policy::1052f1f8b2ed11ea",
+        "policy::996ef283d639ccd1"
+      ],
+      "current_citation_ids": [
+        "oscal::c7743e9fd4699459",
+        "oscal::acc2e6c3a11a2b77",
+        "oscal::04576714c76912d8",
+        "oscal::bce00575d8754469",
+        "oscal::67b32c26f840425f",
+        "policy::cd1f5c9e9212829e",
+        "policy::d97a4428f49ae01d",
+        "policy::067f591b72770b89",
+        "policy::996ef283d639ccd1",
+        "policy::aef581f446514972"
+      ],
+      "new_citation_ids": [
+        "oscal::67b32c26f840425f",
+        "oscal::bce00575d8754469",
+        "policy::067f591b72770b89",
+        "policy::aef581f446514972",
+        "policy::cd1f5c9e9212829e"
+      ],
+      "dropped_citation_ids": [
+        "oscal::9ca72f1f711886b5",
+        "oscal::9ccfa37764422c79",
+        "oscal::f8123286fca61dfb",
+        "policy::1052f1f8b2ed11ea",
+        "policy::20cf134c13a537ee",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Coverage: covered Evidence: - [C1] [statement] Retain audit records for {{ insert: param, au-11_odp }} to provide support for after-the-fact investigations of incidents and to meet regulatory and organizational info... - [C2] [guidance] Organizations retain audit records until it is determined that ",
+      "current_answer_preview": "Coverage: covered Evidence: - [C1] [statement] Retain audit records for {{ insert: param, au-11_odp }} to provide support for after-the-fact investigations of incidents and to meet regulatory and organizational info... - [C2] [guidance] Organizations retain audit records until it is determined that ",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::c7743e9fd4699459",
+          "source_type": "oscal_control",
+          "doc_id": "AU-11",
+          "doc_title": "Audit Record Retention",
+          "section_path": "AU-11 Statement",
+          "chunk_type": "statement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::acc2e6c3a11a2b77",
+          "source_type": "oscal_control",
+          "doc_id": "AU-11",
+          "doc_title": "Audit Record Retention",
+          "section_path": "AU-11 Guidance",
+          "chunk_type": "guidance",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::04576714c76912d8",
+          "source_type": "oscal_control",
+          "doc_id": "AU-11",
+          "doc_title": "Audit Record Retention",
+          "section_path": "Enhancement AU-11.1: Long-term Retrieval Capability",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::bce00575d8754469",
+          "source_type": "oscal_control",
+          "doc_id": "AT-4",
+          "doc_title": "Training Records",
+          "section_path": "AT-4 Guidance",
+          "chunk_type": "guidance",
+          "rank": 8,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::67b32c26f840425f",
+          "source_type": "oscal_control",
+          "doc_id": "AU-12",
+          "doc_title": "Audit Record Generation",
+          "section_path": "AU-12 Guidance",
+          "chunk_type": "guidance",
+          "rank": 10,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": "higher context precision; 5 new cited chunks; 6 dropped cited chunks; current policy sections include Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 6.0 Retention & Protection"
+    },
+    {
+      "id": "gq030",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "Is CM-2 covered by our current policy corpus?",
+      "baseline_scores": {
+        "context_precision": 0.5,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8333
+      },
+      "current_scores": {
+        "context_precision": 0.7143,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.9048
+      },
+      "delta_scores": {
+        "context_precision": 0.2143,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0715
+      },
+      "baseline_citation_count": 8,
+      "current_citation_count": 7,
+      "citation_count_delta": -1,
+      "baseline_citation_ids": [
+        "oscal::6a8bc191d230aa4d",
+        "oscal::5beefd8f03ac8ebc",
+        "oscal::b06382d8f36fcacb",
+        "policy::d97a4428f49ae01d",
+        "policy::f3dff03ff6c80df0",
+        "policy::20cf134c13a537ee",
+        "policy::d49ad46daaaa0e94",
+        "policy::8bc5db34592d1a4a"
+      ],
+      "current_citation_ids": [
+        "oscal::6a8bc191d230aa4d",
+        "oscal::5beefd8f03ac8ebc",
+        "oscal::b06382d8f36fcacb",
+        "policy::067f591b72770b89",
+        "policy::c84511d607b12d2a",
+        "policy::2a48913c44c22eac",
+        "policy::996ef283d639ccd1"
+      ],
+      "new_citation_ids": [
+        "policy::067f591b72770b89",
+        "policy::2a48913c44c22eac",
+        "policy::996ef283d639ccd1",
+        "policy::c84511d607b12d2a"
+      ],
+      "dropped_citation_ids": [
+        "policy::20cf134c13a537ee",
+        "policy::8bc5db34592d1a4a",
+        "policy::d49ad46daaaa0e94",
+        "policy::d97a4428f49ae01d",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Coverage: missing Evidence: - [C1] [statement]   [item] Issue {{ insert: param, cm-02.07_odp.01 }} with {{ insert: param, cm-02.07_odp.02 }} to individuals traveling to locations that the organization deems to be of... - [C2] [statement] Maintain a baseline configuration for system development and t",
+      "current_answer_preview": "Coverage: missing Evidence: - [C1] [statement]   [item] Issue {{ insert: param, cm-02.07_odp.01 }} with {{ insert: param, cm-02.07_odp.02 }} to individuals traveling to locations that the organization deems to be of... - [C2] [statement] Maintain a baseline configuration for system development and t",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::6a8bc191d230aa4d",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "Enhancement CM-2.7: Configure Systems and Components for High-risk Areas",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::0ea68255ca4c79d6",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "Enhancement CM-2.6: Development and Test Environments",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::980eb25c5b89ce1b",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "Enhancement CM-2.2: Automation Support for Accuracy and Currency",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::5beefd8f03ac8ebc",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "CM-2 Statement",
+          "chunk_type": "statement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::b06382d8f36fcacb",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "CM-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": "higher context precision; 4 new cited chunks; 5 dropped cited chunks; current policy sections include Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements"
+    },
+    {
+      "id": "gq013",
+      "mode": "policy",
+      "intent": "policy_process_lookup",
+      "question": "What are the main steps in our incident response procedure?",
+      "baseline_scores": {
+        "context_precision": 0.8,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.9333
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.2,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0667
+      },
+      "baseline_citation_count": 5,
+      "current_citation_count": 5,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "policy::8bc5db34592d1a4a",
+        "policy::d97a4428f49ae01d",
+        "policy::744d0028af912550",
+        "policy::20cf134c13a537ee",
+        "policy::0f4fbee3ea85326d"
+      ],
+      "current_citation_ids": [
+        "policy::d97a4428f49ae01d",
+        "policy::067f591b72770b89",
+        "policy::744d0028af912550",
+        "policy::5cc9dc9363a755c9",
+        "policy::ccccc32a68ca25a6"
+      ],
+      "new_citation_ids": [
+        "policy::067f591b72770b89",
+        "policy::5cc9dc9363a755c9",
+        "policy::ccccc32a68ca25a6"
+      ],
+      "dropped_citation_ids": [
+        "policy::0f4fbee3ea85326d",
+        "policy::20cf134c13a537ee",
+        "policy::8bc5db34592d1a4a"
+      ],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] - Incidents shall be triaged, contained, eradicated, and recovered. - Evidence shall be preserved for investigation. - Stakeholders shall be notified. - *Intentional gap:* escalation time objectives are not defined. - [C2] 5.0 Procedures  1. Detect and report. 2. Triage",
+      "current_answer_preview": "Top evidence excerpts: - [C1] 5.0 Procedures  1. Detect and report. 2. Triage and classify. 3. Contain. 4. Eradicate. 5. Recover. 6. Conduct post-incident review. 7. *Intentional gap:* no exercise schedule defined.  6.0 Communications & Escalation  Define severity levels and notification targets (sy",
+      "current_selected_context": [
+        {
+          "chunk_id": "policy::d97a4428f49ae01d",
+          "source_type": "policy_pdf",
+          "doc_id": "03_incident_response_plan",
+          "doc_title": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Procedures",
+          "chunk_type": null,
+          "rank": 1,
+          "score": 0.0980327868852459
+        },
+        {
+          "chunk_id": "policy::e9955c1822acd8c4",
+          "source_type": "policy_pdf",
+          "doc_id": "03_incident_response_plan",
+          "doc_title": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Procedures",
+          "chunk_type": "text",
+          "rank": 2,
+          "score": 0.09692307692307693
+        },
+        {
+          "chunk_id": "policy::067f591b72770b89",
+          "source_type": "policy_pdf",
+          "doc_id": "03_incident_response_plan",
+          "doc_title": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements",
+          "chunk_type": "text",
+          "rank": 3,
+          "score": 0.09666666666666668
+        },
+        {
+          "chunk_id": "policy::744d0028af912550",
+          "source_type": "policy_pdf",
+          "doc_id": "03_incident_response_plan",
+          "doc_title": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "chunk_type": null,
+          "rank": 4,
+          "score": 0.09612903225806452
+        },
+        {
+          "chunk_id": "policy::1bfa8825b01f75f7",
+          "source_type": "policy_pdf",
+          "doc_id": "03_incident_response_plan",
+          "doc_title": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "chunk_type": "text",
+          "rank": 5,
+          "score": 0.09587301587301587
+        }
+      ],
+      "note": "higher context precision; 3 new cited chunks; 3 dropped cited chunks; current policy sections include Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Procedures"
+    },
+    {
+      "id": "gq027",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "What is our current policy coverage for IR-4?",
+      "baseline_scores": {
+        "context_precision": 0.7143,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.9048
+      },
+      "current_scores": {
+        "context_precision": 0.8333,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.9444
+      },
+      "delta_scores": {
+        "context_precision": 0.119,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0396
+      },
+      "baseline_citation_count": 7,
+      "current_citation_count": 6,
+      "citation_count_delta": -1,
+      "baseline_citation_ids": [
+        "oscal::c82a88083d7b2c86",
+        "oscal::330e897c2f004a2d",
+        "policy::f3dff03ff6c80df0",
+        "policy::996ef283d639ccd1",
+        "policy::d97a4428f49ae01d",
+        "policy::8bc5db34592d1a4a",
+        "policy::744d0028af912550"
+      ],
+      "current_citation_ids": [
+        "oscal::c82a88083d7b2c86",
+        "oscal::330e897c2f004a2d",
+        "policy::067f591b72770b89",
+        "policy::c84511d607b12d2a",
+        "policy::1bfa8825b01f75f7",
+        "policy::5cc9dc9363a755c9"
+      ],
+      "new_citation_ids": [
+        "policy::067f591b72770b89",
+        "policy::1bfa8825b01f75f7",
+        "policy::5cc9dc9363a755c9",
+        "policy::c84511d607b12d2a"
+      ],
+      "dropped_citation_ids": [
+        "policy::744d0028af912550",
+        "policy::8bc5db34592d1a4a",
+        "policy::996ef283d639ccd1",
+        "policy::d97a4428f49ae01d",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Coverage: partial Evidence: - [C1] [statement] Coordinate with {{ insert: param, ir-04.08_odp.01 }} to correlate and share {{ insert: param, ir-04.08_odp.02 }} to achieve a cross-organization perspective on incident... - [C2] [statement] Identify {{ insert: param, ir-04.03_odp.01 }} and take the fol",
+      "current_answer_preview": "Coverage: partial Evidence: - [C1] [statement] Coordinate with {{ insert: param, ir-04.08_odp.01 }} to correlate and share {{ insert: param, ir-04.08_odp.02 }} to achieve a cross-organization perspective on incident... - [C2] [statement] Identify {{ insert: param, ir-04.03_odp.01 }} and take the fol",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::c82a88083d7b2c86",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "Enhancement IR-4.8: Correlation with External Organizations",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::be4d3b14b08450a7",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "Enhancement IR-4.3: Continuity of Operations",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::c6b439e9f9c6cbed",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "Enhancement IR-4.10: Supply Chain Coordination",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::330e897c2f004a2d",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "IR-4 Statement",
+          "chunk_type": "statement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::834fb7b428bed8c0",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "Enhancement IR-4.1: Automated Incident Handling Processes",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": "higher context precision; 4 new cited chunks; 5 dropped cited chunks; current policy sections include Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements"
+    },
+    {
+      "id": "gq028",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "How should IR-6 be labeled for coverage today?",
+      "baseline_scores": {
+        "context_precision": 0.7778,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.9259
+      },
+      "current_scores": {
+        "context_precision": 0.8889,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.963
+      },
+      "delta_scores": {
+        "context_precision": 0.1111,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0371
+      },
+      "baseline_citation_count": 9,
+      "current_citation_count": 9,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::2fa4c15f13569cf1",
+        "oscal::e5bccf4d3dc5e222",
+        "oscal::67eb5936ac90654d",
+        "oscal::9ca72f1f711886b5",
+        "policy::002d37bc6a96ad9e",
+        "policy::1052f1f8b2ed11ea",
+        "policy::20cf134c13a537ee",
+        "policy::8bc5db34592d1a4a",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "current_citation_ids": [
+        "oscal::2fa4c15f13569cf1",
+        "oscal::e5bccf4d3dc5e222",
+        "oscal::67eb5936ac90654d",
+        "oscal::f33f3a8d23a5880e",
+        "policy::067f591b72770b89",
+        "policy::ccccc32a68ca25a6",
+        "policy::d97a4428f49ae01d",
+        "policy::5cc9dc9363a755c9",
+        "policy::1bfa8825b01f75f7"
+      ],
+      "new_citation_ids": [
+        "oscal::f33f3a8d23a5880e",
+        "policy::067f591b72770b89",
+        "policy::1bfa8825b01f75f7",
+        "policy::5cc9dc9363a755c9",
+        "policy::ccccc32a68ca25a6",
+        "policy::d97a4428f49ae01d"
+      ],
+      "dropped_citation_ids": [
+        "oscal::9ca72f1f711886b5",
+        "policy::002d37bc6a96ad9e",
+        "policy::1052f1f8b2ed11ea",
+        "policy::20cf134c13a537ee",
+        "policy::8bc5db34592d1a4a",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Coverage: partial Evidence: - [C1] [statement] Report system vulnerabilities associated with reported incidents to {{ insert: param, ir-06.02_odp }}. - [C2] [statement]   [item] Require personnel to report suspected incidents to the organizational incident response capability within {{ insert: param",
+      "current_answer_preview": "Coverage: partial Evidence: - [C1] [statement] Report system vulnerabilities associated with reported incidents to {{ insert: param, ir-06.02_odp }}. - [C2] [statement]   [item] Require personnel to report suspected incidents to the organizational incident response capability within {{ insert: param",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::2fa4c15f13569cf1",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "Enhancement IR-6.2: Vulnerabilities Related to Incidents",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::e5bccf4d3dc5e222",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "IR-6 Statement",
+          "chunk_type": "statement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::2fd8fe131193f7e9",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "Enhancement IR-6.3: Supply Chain Coordination",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::67eb5936ac90654d",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "IR-6 Guidance",
+          "chunk_type": "guidance",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::5968a8a5a3f93c28",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "Enhancement IR-6.1: Automated Reporting",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": "higher context precision; 6 new cited chunks; 6 dropped cited chunks; current policy sections include Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements"
+    },
+    {
+      "id": "gq019",
+      "mode": "policy",
+      "intent": "policy_metadata_lookup",
+      "question": "What data types are listed for the system in the mini SSP?",
+      "baseline_scores": {
+        "context_precision": 0.1111,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.7037
+      },
+      "current_scores": {
+        "context_precision": 0.2222,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.7407
+      },
+      "delta_scores": {
+        "context_precision": 0.1111,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.037
+      },
+      "baseline_citation_count": 9,
+      "current_citation_count": 9,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "policy::996ef283d639ccd1",
+        "oscal::67b32c26f840425f",
+        "oscal::17e6f106946dd372",
+        "oscal::94e23acd1e38b2df",
+        "oscal::f26bac6a418ef1a9",
+        "oscal::523d32ec5df28746",
+        "oscal::7428e576cef5e9f9",
+        "oscal::1556de7269edce7b",
+        "oscal::263bf873d468df5c"
+      ],
+      "current_citation_ids": [
+        "policy::b5c45d00fa3aad5d",
+        "oscal::67b32c26f840425f",
+        "oscal::94e23acd1e38b2df",
+        "oscal::17e6f106946dd372",
+        "policy::f4a6d05a00a1080f",
+        "oscal::f26bac6a418ef1a9",
+        "oscal::523d32ec5df28746",
+        "oscal::7428e576cef5e9f9",
+        "oscal::1556de7269edce7b"
+      ],
+      "new_citation_ids": [
+        "policy::b5c45d00fa3aad5d",
+        "policy::f4a6d05a00a1080f"
+      ],
+      "dropped_citation_ids": [
+        "oscal::263bf873d468df5c",
+        "policy::996ef283d639ccd1"
+      ],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] 5.0 Data Types  - Operational records - User account data - Audit logs - PII (limited: names, email addresses, user IDs)  6.0 System Boundary (High Level)  - App tier - API tier - Identity service - Logging pipeline - Database  7.0 Assumptions and Constraints  - No real",
+      "current_answer_preview": "Top evidence excerpts: - [C1] 5.0 Data Types  - Operational records - User account data - Audit logs - PII (limited: names, email addresses, user IDs) - [C2] [guidance] Audit records can be generated from many different system components. The event types specified in [AU-2d](#au-2_smt.d) are the eve",
+      "current_selected_context": [
+        {
+          "chunk_id": "policy::b5c45d00fa3aad5d",
+          "source_type": "policy_pdf",
+          "doc_id": "01_mini_ssp",
+          "doc_title": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Data Types",
+          "chunk_type": "text",
+          "rank": 1,
+          "score": 0.029726775956284153
+        },
+        {
+          "chunk_id": "oscal::67b32c26f840425f",
+          "source_type": "oscal_control",
+          "doc_id": "AU-12",
+          "doc_title": "Audit Record Generation",
+          "section_path": "AU-12 Guidance",
+          "chunk_type": "guidance",
+          "rank": 2,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::94e23acd1e38b2df",
+          "source_type": "oscal_control",
+          "doc_id": "CM-13",
+          "doc_title": "Data Action Mapping",
+          "section_path": "CM-13 Guidance",
+          "chunk_type": "guidance",
+          "rank": 3,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::17e6f106946dd372",
+          "source_type": "oscal_control",
+          "doc_id": "SC-29",
+          "doc_title": "Heterogeneity",
+          "section_path": "SC-29 Statement",
+          "chunk_type": "statement",
+          "rank": 4,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "policy::f4a6d05a00a1080f",
+          "source_type": "policy_pdf",
+          "doc_id": "01_mini_ssp",
+          "doc_title": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 9.0 Notes",
+          "chunk_type": "text",
+          "rank": 5,
+          "score": 0.015873015873015872
+        }
+      ],
+      "note": "higher context precision; 2 new cited chunks; 2 dropped cited chunks; current policy sections include Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Data Types"
+    },
+    {
+      "id": "gq014",
+      "mode": "policy",
+      "intent": "policy_requirement_lookup",
+      "question": "How long do we retain logs in our standard?",
+      "baseline_scores": {
+        "context_precision": 0.5,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8333
+      },
+      "current_scores": {
+        "context_precision": 0.5714,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8571
+      },
+      "delta_scores": {
+        "context_precision": 0.0714,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0238
+      },
+      "baseline_citation_count": 6,
+      "current_citation_count": 7,
+      "citation_count_delta": 1,
+      "baseline_citation_ids": [
+        "policy::b5987f24b0684964",
+        "policy::ad7516675349e2d7",
+        "policy::33dfa43d5f14c8a1",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::8bc5db34592d1a4a",
+        "policy::75524c1dca3496f9"
+      ],
+      "current_citation_ids": [
+        "policy::cd1f5c9e9212829e",
+        "policy::e889dca05eaece20",
+        "policy::224efd4664bcb8cd",
+        "policy::570b537c618b21ff",
+        "policy::b5c45d00fa3aad5d",
+        "policy::fc927565ec409982",
+        "policy::067f591b72770b89"
+      ],
+      "new_citation_ids": [
+        "policy::067f591b72770b89",
+        "policy::224efd4664bcb8cd",
+        "policy::570b537c618b21ff",
+        "policy::b5c45d00fa3aad5d",
+        "policy::cd1f5c9e9212829e",
+        "policy::e889dca05eaece20",
+        "policy::fc927565ec409982"
+      ],
+      "dropped_citation_ids": [
+        "policy::33dfa43d5f14c8a1",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::75524c1dca3496f9",
+        "policy::8bc5db34592d1a4a",
+        "policy::ad7516675349e2d7",
+        "policy::b5987f24b0684964"
+      ],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)  > **SYNTHETIC DEMO ARTIFACT — ACADEMIC USE ONLY**  **Document ID:** STD_LOGGING   **Version:** 0.1   **Effective Date:** 2026-02-11   **Owner:** Security Engineering Lead (Fictional Role)    ",
+      "current_answer_preview": "Top evidence excerpts: - [C1] 6.0 Retention & Protection  - Retain 90 days online, 1 year archived - Protect logs from modification - [C2] Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)  > **SYNTHETIC DEMO ARTIFACT — ACADEMIC USE ONLY**  **Document ID:** STD_LOGGING **",
+      "current_selected_context": [
+        {
+          "chunk_id": "policy::cd1f5c9e9212829e",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 6.0 Retention & Protection",
+          "chunk_type": "text",
+          "rank": 1,
+          "score": 0.0760655737704918
+        },
+        {
+          "chunk_id": "policy::e889dca05eaece20",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "chunk_type": "text",
+          "rank": 2,
+          "score": 0.0722008547008547
+        },
+        {
+          "chunk_id": "policy::b5987f24b0684964",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "chunk_type": null,
+          "rank": 3,
+          "score": 0.05746031746031746
+        },
+        {
+          "chunk_id": "policy::224efd4664bcb8cd",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Logging Requirements",
+          "chunk_type": "text",
+          "rank": 4,
+          "score": 0.05641791044776119
+        },
+        {
+          "chunk_id": "policy::570b537c618b21ff",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 8.0 Review Cadence",
+          "chunk_type": "text",
+          "rank": 6,
+          "score": 0.054285714285714284
+        }
+      ],
+      "note": "higher context precision; 7 new cited chunks; 6 dropped cited chunks; current policy sections include Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 6.0 Retention & Protection"
+    },
+    {
+      "id": "gq021",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "Based on our docs, what is the coverage status for AC-2?",
+      "baseline_scores": {
+        "context_precision": 0.375,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.7917
+      },
+      "current_scores": {
+        "context_precision": 0.4286,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8095
+      },
+      "delta_scores": {
+        "context_precision": 0.0536,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0178
+      },
+      "baseline_citation_count": 8,
+      "current_citation_count": 7,
+      "citation_count_delta": -1,
+      "baseline_citation_ids": [
+        "oscal::6af7c82bac5cbef8",
+        "oscal::66966831fabce6f1",
+        "policy::f3dff03ff6c80df0",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::33dfa43d5f14c8a1",
+        "policy::996ef283d639ccd1",
+        "policy::20cf134c13a537ee",
+        "policy::4a3269a4205b4b30"
+      ],
+      "current_citation_ids": [
+        "oscal::6af7c82bac5cbef8",
+        "oscal::66966831fabce6f1",
+        "policy::c84511d607b12d2a",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::fc927565ec409982",
+        "policy::996ef283d639ccd1",
+        "policy::012656dfe340a8f7"
+      ],
+      "new_citation_ids": [
+        "policy::012656dfe340a8f7",
+        "policy::c84511d607b12d2a",
+        "policy::fc927565ec409982"
+      ],
+      "dropped_citation_ids": [
+        "policy::20cf134c13a537ee",
+        "policy::33dfa43d5f14c8a1",
+        "policy::4a3269a4205b4b30",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Coverage: partial Evidence: - [C1] [statement] Support the management of system accounts using {{ insert: param, ac-02.01_odp }}. - [C2] [statement] Create, activate, manage, and deactivate {{ insert: param, ac-02.08_odp }} dynamically. - [C3] [guidance] Examples of system account types include indi",
+      "current_answer_preview": "Coverage: partial Evidence: - [C1] [statement] Support the management of system accounts using {{ insert: param, ac-02.01_odp }}. - [C2] [statement] Create, activate, manage, and deactivate {{ insert: param, ac-02.08_odp }} dynamically. - [C3] [guidance] Examples of system account types include indi",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::6af7c82bac5cbef8",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "Enhancement AC-2.1: Automated System Account Management",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::0ad98b69ae229a6b",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "Enhancement AC-2.8: Dynamic Account Management",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::66966831fabce6f1",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "AC-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::c8b239d5676f2db5",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "Enhancement AC-2.4: Automated Audit Actions",
+          "chunk_type": "enhancement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::30fc8d7e3f06f081",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "Enhancement AC-2.12: Account Monitoring for Atypical Usage",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": "higher context precision; 3 new cited chunks; 4 dropped cited chunks; current policy sections include Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements"
+    },
+    {
+      "id": "gq001",
+      "mode": "framework",
+      "intent": "control_statement_lookup",
+      "question": "What does AC-2 require for account management?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 3,
+      "current_citation_count": 3,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::6af7c82bac5cbef8",
+        "oscal::66966831fabce6f1",
+        "oscal::96170e4780eb3c99"
+      ],
+      "current_citation_ids": [
+        "oscal::6af7c82bac5cbef8",
+        "oscal::66966831fabce6f1",
+        "oscal::96170e4780eb3c99"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement] Support the management of system accounts using {{ insert: param, ac-02.01_odp }}. - [C2] [statement] Create, activate, manage, and deactivate {{ insert: param, ac-02.08_odp }} dynamically. - [C3] [guidance] Examples of system account types include individua",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement] Support the management of system accounts using {{ insert: param, ac-02.01_odp }}. - [C2] [statement] Create, activate, manage, and deactivate {{ insert: param, ac-02.08_odp }} dynamically. - [C3] [guidance] Examples of system account types include individua",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::6af7c82bac5cbef8",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "Enhancement AC-2.1: Automated System Account Management",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::0ad98b69ae229a6b",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "Enhancement AC-2.8: Dynamic Account Management",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::66966831fabce6f1",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "AC-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::c8b239d5676f2db5",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "Enhancement AC-2.4: Automated Audit Actions",
+          "chunk_type": "enhancement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::30fc8d7e3f06f081",
+          "source_type": "oscal_control",
+          "doc_id": "AC-2",
+          "doc_title": "Account Management",
+          "section_path": "Enhancement AC-2.12: Account Monitoring for Atypical Usage",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq002",
+      "mode": "framework",
+      "intent": "control_statement_lookup",
+      "question": "Summarize the requirement in AC-6.",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 3,
+      "current_citation_count": 3,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::aa1de4d34cb082ba",
+        "oscal::9dcb70b63d64a69f",
+        "oscal::5920d4247c2c800c"
+      ],
+      "current_citation_ids": [
+        "oscal::aa1de4d34cb082ba",
+        "oscal::9dcb70b63d64a69f",
+        "oscal::5920d4247c2c800c"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement] Employ the principle of least privilege, allowing only authorized accesses for users (or processes acting on behalf of users) that are necessary to accomplish assigned organizational tasks. - [C2] [statement] Prevent non-privileged users from executing privi",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement] Employ the principle of least privilege, allowing only authorized accesses for users (or processes acting on behalf of users) that are necessary to accomplish assigned organizational tasks. - [C2] [statement] Prevent non-privileged users from executing privi",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::aa1de4d34cb082ba",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "AC-6 Statement",
+          "chunk_type": "statement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::9dcb70b63d64a69f",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "Enhancement AC-6.10: Prohibit Non-privileged Users from Executing Privileged Functions",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::b200f823ffd4c045",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "Enhancement AC-6.8: Privilege Levels for Code Execution",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::5920d4247c2c800c",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "AC-6 Guidance",
+          "chunk_type": "guidance",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::0e7ac224ab225c9c",
+          "source_type": "oscal_control",
+          "doc_id": "AC-6",
+          "doc_title": "Least Privilege",
+          "section_path": "Enhancement AC-6.1: Authorize Access to Security Functions",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq003",
+      "mode": "framework",
+      "intent": "control_statement_lookup",
+      "question": "What is the CM-2 baseline configuration requirement in NIST 800-53?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 3,
+      "current_citation_count": 3,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::6a8bc191d230aa4d",
+        "oscal::5beefd8f03ac8ebc",
+        "oscal::b06382d8f36fcacb"
+      ],
+      "current_citation_ids": [
+        "oscal::6a8bc191d230aa4d",
+        "oscal::5beefd8f03ac8ebc",
+        "oscal::b06382d8f36fcacb"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement]   [item] Issue {{ insert: param, cm-02.07_odp.01 }} with {{ insert: param, cm-02.07_odp.02 }} to individuals traveling to locations that the organization deems to be of significant risk; and   [item] Apply the following controls to the systems or components ",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement]   [item] Issue {{ insert: param, cm-02.07_odp.01 }} with {{ insert: param, cm-02.07_odp.02 }} to individuals traveling to locations that the organization deems to be of significant risk; and   [item] Apply the following controls to the systems or components ",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::6a8bc191d230aa4d",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "Enhancement CM-2.7: Configure Systems and Components for High-risk Areas",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::0ea68255ca4c79d6",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "Enhancement CM-2.6: Development and Test Environments",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::980eb25c5b89ce1b",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "Enhancement CM-2.2: Automation Support for Accuracy and Currency",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::5beefd8f03ac8ebc",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "CM-2 Statement",
+          "chunk_type": "statement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::b06382d8f36fcacb",
+          "source_type": "oscal_control",
+          "doc_id": "CM-2",
+          "doc_title": "Baseline Configuration",
+          "section_path": "CM-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq004",
+      "mode": "framework",
+      "intent": "control_guidance_lookup",
+      "question": "What does IR-4 say about incident handling?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 2,
+      "current_citation_count": 2,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::c82a88083d7b2c86",
+        "oscal::330e897c2f004a2d"
+      ],
+      "current_citation_ids": [
+        "oscal::c82a88083d7b2c86",
+        "oscal::330e897c2f004a2d"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement] Coordinate with {{ insert: param, ir-04.08_odp.01 }} to correlate and share {{ insert: param, ir-04.08_odp.02 }} to achieve a cross-organization perspective on incident awareness and more effective incident responses. - [C2] [statement] Identify {{ insert: p",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement] Coordinate with {{ insert: param, ir-04.08_odp.01 }} to correlate and share {{ insert: param, ir-04.08_odp.02 }} to achieve a cross-organization perspective on incident awareness and more effective incident responses. - [C2] [statement] Identify {{ insert: p",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::c82a88083d7b2c86",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "Enhancement IR-4.8: Correlation with External Organizations",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::be4d3b14b08450a7",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "Enhancement IR-4.3: Continuity of Operations",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::c6b439e9f9c6cbed",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "Enhancement IR-4.10: Supply Chain Coordination",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::330e897c2f004a2d",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "IR-4 Statement",
+          "chunk_type": "statement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::834fb7b428bed8c0",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "Enhancement IR-4.1: Automated Incident Handling Processes",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq005",
+      "mode": "framework",
+      "intent": "control_statement_lookup",
+      "question": "Explain AU-11 retention requirements.",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 3,
+      "current_citation_count": 3,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::c7743e9fd4699459",
+        "oscal::acc2e6c3a11a2b77",
+        "oscal::04576714c76912d8"
+      ],
+      "current_citation_ids": [
+        "oscal::c7743e9fd4699459",
+        "oscal::acc2e6c3a11a2b77",
+        "oscal::04576714c76912d8"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement] Retain audit records for {{ insert: param, au-11_odp }} to provide support for after-the-fact investigations of incidents and to meet regulatory and organizational information retention requirements. - [C2] [guidance] Organizations retain audit records until",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement] Retain audit records for {{ insert: param, au-11_odp }} to provide support for after-the-fact investigations of incidents and to meet regulatory and organizational information retention requirements. - [C2] [guidance] Organizations retain audit records until",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::c7743e9fd4699459",
+          "source_type": "oscal_control",
+          "doc_id": "AU-11",
+          "doc_title": "Audit Record Retention",
+          "section_path": "AU-11 Statement",
+          "chunk_type": "statement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::acc2e6c3a11a2b77",
+          "source_type": "oscal_control",
+          "doc_id": "AU-11",
+          "doc_title": "Audit Record Retention",
+          "section_path": "AU-11 Guidance",
+          "chunk_type": "guidance",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::04576714c76912d8",
+          "source_type": "oscal_control",
+          "doc_id": "AU-11",
+          "doc_title": "Audit Record Retention",
+          "section_path": "Enhancement AU-11.1: Long-term Retrieval Capability",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq006",
+      "mode": "framework",
+      "intent": "control_statement_lookup",
+      "question": "What is required by PL-2?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 2,
+      "current_citation_count": 2,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::90aa4b10736f911c",
+        "oscal::af012dbdcdf04d30"
+      ],
+      "current_citation_ids": [
+        "oscal::90aa4b10736f911c",
+        "oscal::af012dbdcdf04d30"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [guidance] System security and privacy plans are scoped to the system and system components within the defined authorization boundary and contain an overview of the security and privacy requirements for the system and the controls selected to satisfy the requirements. T",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [guidance] System security and privacy plans are scoped to the system and system components within the defined authorization boundary and contain an overview of the security and privacy requirements for the system and the controls selected to satisfy the requirements. T",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::90aa4b10736f911c",
+          "source_type": "oscal_control",
+          "doc_id": "PL-2",
+          "doc_title": "System Security and Privacy Plans",
+          "section_path": "PL-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::af012dbdcdf04d30",
+          "source_type": "oscal_control",
+          "doc_id": "PL-2",
+          "doc_title": "System Security and Privacy Plans",
+          "section_path": "PL-2 Statement",
+          "chunk_type": "statement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq007",
+      "mode": "framework",
+      "intent": "control_statement_lookup",
+      "question": "Describe RA-5 expectations.",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 3,
+      "current_citation_count": 3,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::a4fd8921d78621ca",
+        "oscal::a1f91cdc98502b87",
+        "oscal::36b710064073821d"
+      ],
+      "current_citation_ids": [
+        "oscal::a4fd8921d78621ca",
+        "oscal::a1f91cdc98502b87",
+        "oscal::36b710064073821d"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement] Determine information about the system that is discoverable and take {{ insert: param, ra-05.04_odp }}. - [C2] [statement] Define the breadth and depth of vulnerability scanning coverage. - [C3] [statement] Compare the results of multiple vulnerability scans",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement] Determine information about the system that is discoverable and take {{ insert: param, ra-05.04_odp }}. - [C2] [statement] Define the breadth and depth of vulnerability scanning coverage. - [C3] [statement] Compare the results of multiple vulnerability scans",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::a4fd8921d78621ca",
+          "source_type": "oscal_control",
+          "doc_id": "RA-5",
+          "doc_title": "Vulnerability Monitoring and Scanning",
+          "section_path": "Enhancement RA-5.4: Discoverable Information",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::9ca72f1f711886b5",
+          "source_type": "oscal_control",
+          "doc_id": "RA-5",
+          "doc_title": "Vulnerability Monitoring and Scanning",
+          "section_path": "Enhancement RA-5.3: Breadth and Depth of Coverage",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::006dad45906cb9a6",
+          "source_type": "oscal_control",
+          "doc_id": "RA-5",
+          "doc_title": "Vulnerability Monitoring and Scanning",
+          "section_path": "Enhancement RA-5.6: Automated Trend Analyses",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::6b10f00d3f42df8e",
+          "source_type": "oscal_control",
+          "doc_id": "RA-5",
+          "doc_title": "Vulnerability Monitoring and Scanning",
+          "section_path": "Enhancement RA-5.11: Public Disclosure Program",
+          "chunk_type": "enhancement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::a1f91cdc98502b87",
+          "source_type": "oscal_control",
+          "doc_id": "RA-5",
+          "doc_title": "Vulnerability Monitoring and Scanning",
+          "section_path": "RA-5 Statement",
+          "chunk_type": "statement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq008",
+      "mode": "framework",
+      "intent": "control_statement_lookup",
+      "question": "What does AU-2 require us to log?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 2,
+      "current_citation_count": 2,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::2fe81dff71e1ec09",
+        "oscal::41a71b392e0d362b"
+      ],
+      "current_citation_ids": [
+        "oscal::2fe81dff71e1ec09",
+        "oscal::41a71b392e0d362b"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [guidance] An event is an observable occurrence in a system. The types of events that require logging are those events that are significant and relevant to the security of systems and the privacy of individuals. Event logging also supports specific monitoring and auditi",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [guidance] An event is an observable occurrence in a system. The types of events that require logging are those events that are significant and relevant to the security of systems and the privacy of individuals. Event logging also supports specific monitoring and auditi",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::2fe81dff71e1ec09",
+          "source_type": "oscal_control",
+          "doc_id": "AU-2",
+          "doc_title": "Event Logging",
+          "section_path": "AU-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::41a71b392e0d362b",
+          "source_type": "oscal_control",
+          "doc_id": "AU-2",
+          "doc_title": "Event Logging",
+          "section_path": "AU-2 Statement",
+          "chunk_type": "statement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq009",
+      "mode": "framework",
+      "intent": "control_statement_lookup",
+      "question": "What does IR-6 require for incident reporting?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 3,
+      "current_citation_count": 3,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::2fa4c15f13569cf1",
+        "oscal::e5bccf4d3dc5e222",
+        "oscal::67eb5936ac90654d"
+      ],
+      "current_citation_ids": [
+        "oscal::2fa4c15f13569cf1",
+        "oscal::e5bccf4d3dc5e222",
+        "oscal::67eb5936ac90654d"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement] Report system vulnerabilities associated with reported incidents to {{ insert: param, ir-06.02_odp }}. - [C2] [statement]   [item] Require personnel to report suspected incidents to the organizational incident response capability within {{ insert: param, ir-",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement] Report system vulnerabilities associated with reported incidents to {{ insert: param, ir-06.02_odp }}. - [C2] [statement]   [item] Require personnel to report suspected incidents to the organizational incident response capability within {{ insert: param, ir-",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::2fa4c15f13569cf1",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "Enhancement IR-6.2: Vulnerabilities Related to Incidents",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::e5bccf4d3dc5e222",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "IR-6 Statement",
+          "chunk_type": "statement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::2fd8fe131193f7e9",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "Enhancement IR-6.3: Supply Chain Coordination",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::67eb5936ac90654d",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "IR-6 Guidance",
+          "chunk_type": "guidance",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::5968a8a5a3f93c28",
+          "source_type": "oscal_control",
+          "doc_id": "IR-6",
+          "doc_title": "Incident Reporting",
+          "section_path": "Enhancement IR-6.1: Automated Reporting",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq010",
+      "mode": "framework",
+      "intent": "control_statement_lookup",
+      "question": "What is the requirement in AC-3?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 2,
+      "current_citation_count": 2,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::509b6b3a0469152a",
+        "oscal::cddf351fed36c088"
+      ],
+      "current_citation_ids": [
+        "oscal::509b6b3a0469152a",
+        "oscal::cddf351fed36c088"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement] Employ an audited override of automated access control mechanisms under {{ insert: param, ac-03.10_odp.01 }} by {{ insert: param, ac-03.10_odp.02 }}. - [C2] [statement]   [item] Enforce {{ insert: param, ac-3.15_prm_1 }} over the set of covered subjects and ",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement] Employ an audited override of automated access control mechanisms under {{ insert: param, ac-03.10_odp.01 }} by {{ insert: param, ac-03.10_odp.02 }}. - [C2] [statement]   [item] Enforce {{ insert: param, ac-3.15_prm_1 }} over the set of covered subjects and ",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::509b6b3a0469152a",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.10: Audited Override of Access Control Mechanisms",
+          "chunk_type": "enhancement",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::668ba3e8dd90e953",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.15: Discretionary and Mandatory Access Control",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::e84f1f5cf22ccc68",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.7: Role-based Access Control",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::a52e09c40e9b0166",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.8: Revocation of Access Authorizations",
+          "chunk_type": "enhancement",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "chunk_id": "oscal::6c243a38679eb088",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.14: Individual Access",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.015384615384615385
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq011",
+      "mode": "policy",
+      "intent": "policy_requirement_lookup",
+      "question": "What does our access control policy say about least privilege?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 4,
+      "current_citation_count": 6,
+      "citation_count_delta": 2,
+      "baseline_citation_ids": [
+        "policy::46cb74058f99835e",
+        "policy::215538bee9458bea",
+        "policy::a6a19f5fdda665fe",
+        "policy::d2023c2332ff9b2c"
+      ],
+      "current_citation_ids": [
+        "policy::c84511d607b12d2a",
+        "policy::685491739c134cc9",
+        "policy::46cb74058f99835e",
+        "policy::9227ac81bce1673a",
+        "policy::4d604fc022322415",
+        "policy::97f700200f3ed3b5"
+      ],
+      "new_citation_ids": [
+        "policy::4d604fc022322415",
+        "policy::685491739c134cc9",
+        "policy::9227ac81bce1673a",
+        "policy::97f700200f3ed3b5",
+        "policy::c84511d607b12d2a"
+      ],
+      "dropped_citation_ids": [
+        "policy::215538bee9458bea",
+        "policy::a6a19f5fdda665fe",
+        "policy::d2023c2332ff9b2c"
+      ],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] 5.0 Procedures  1. User submits an access request with justification. 2. Manager approves the request. 3. Admin provisions access per role. 4. Privileged access requires IAM Lead approval. 5. *Intentional gap:* no periodic recertification procedure defined.  6.0 Excepti",
+      "current_answer_preview": "Top evidence excerpts: - [C1] 4.0 Policy Statements  - Access shall be granted based on least privilege. - Privileged accounts shall be separate from standard user accounts. - Access requests shall be approved prior to provisioning. - Accounts shall be disabled upon termination or role change. - *In",
+      "current_selected_context": [
+        {
+          "chunk_id": "policy::c84511d607b12d2a",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements",
+          "chunk_type": "text",
+          "rank": 1,
+          "score": 0.15549310434556335
+        },
+        {
+          "chunk_id": "policy::685491739c134cc9",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "chunk_type": "text",
+          "rank": 2,
+          "score": 0.1495138888888889
+        },
+        {
+          "chunk_id": "policy::46cb74058f99835e",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Procedures",
+          "chunk_type": null,
+          "rank": 3,
+          "score": 0.13746031746031745
+        },
+        {
+          "chunk_id": "policy::f0ae17b00f3fcb7e",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Procedures",
+          "chunk_type": "text",
+          "rank": 4,
+          "score": 0.13692307692307693
+        },
+        {
+          "chunk_id": "policy::9227ac81bce1673a",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 3.0 Roles and Responsibilities",
+          "chunk_type": "text",
+          "rank": 5,
+          "score": 0.13549295774647888
+        }
+      ],
+      "note": "5 new cited chunks; 3 dropped cited chunks; current policy sections include Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements"
+    },
+    {
+      "id": "gq012",
+      "mode": "policy",
+      "intent": "policy_requirement_lookup",
+      "question": "What approvals are required before access is provisioned?",
+      "baseline_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "current_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 10,
+      "current_citation_count": 10,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::41c468d3d6cd4aad",
+        "oscal::f71a58988fa95daf",
+        "oscal::44b795ae804b1854",
+        "oscal::016c9c095cc11bad",
+        "oscal::fa871d3c27678684",
+        "oscal::cddf351fed36c088",
+        "oscal::80685c8b08a4eca5",
+        "oscal::1cdaab5fb5a331f6",
+        "oscal::16f572aa9ac1ffb7",
+        "oscal::ece0462036f5f6ad"
+      ],
+      "current_citation_ids": [
+        "oscal::41c468d3d6cd4aad",
+        "oscal::f71a58988fa95daf",
+        "oscal::44b795ae804b1854",
+        "oscal::016c9c095cc11bad",
+        "oscal::fa871d3c27678684",
+        "oscal::cddf351fed36c088",
+        "oscal::80685c8b08a4eca5",
+        "oscal::1cdaab5fb5a331f6",
+        "oscal::16f572aa9ac1ffb7",
+        "oscal::ece0462036f5f6ad"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement]   [item] Develop, approve, and maintain a list of individuals with authorized access to the facility where the system resides;   [item] Issue authorization credentials for facility access;   [item] Review the access list detailing authorized facility access ",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement]   [item] Develop, approve, and maintain a list of individuals with authorized access to the facility where the system resides;   [item] Issue authorization credentials for facility access;   [item] Review the access list detailing authorized facility access ",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::41c468d3d6cd4aad",
+          "source_type": "oscal_control",
+          "doc_id": "PE-2",
+          "doc_title": "Physical Access Authorizations",
+          "section_path": "PE-2 Statement",
+          "chunk_type": "statement",
+          "rank": 1,
+          "score": 0.029910714285714284
+        },
+        {
+          "chunk_id": "oscal::f71a58988fa95daf",
+          "source_type": "oscal_control",
+          "doc_id": "PE-8",
+          "doc_title": "Visitor Access Records",
+          "section_path": "PE-8 Guidance",
+          "chunk_type": "guidance",
+          "rank": 2,
+          "score": 0.028958333333333336
+        },
+        {
+          "chunk_id": "oscal::44b795ae804b1854",
+          "source_type": "oscal_control",
+          "doc_id": "AC-24",
+          "doc_title": "Access Control Decisions",
+          "section_path": "AC-24 Guidance",
+          "chunk_type": "guidance",
+          "rank": 3,
+          "score": 0.028594771241830064
+        },
+        {
+          "chunk_id": "oscal::016c9c095cc11bad",
+          "source_type": "oscal_control",
+          "doc_id": "PE-3",
+          "doc_title": "Physical Access Control",
+          "section_path": "PE-3 Statement",
+          "chunk_type": "statement",
+          "rank": 4,
+          "score": 0.02702702702702703
+        },
+        {
+          "chunk_id": "oscal::fa871d3c27678684",
+          "source_type": "oscal_control",
+          "doc_id": "MA-5",
+          "doc_title": "Maintenance Personnel",
+          "section_path": "MA-5 Statement",
+          "chunk_type": "statement",
+          "rank": 5,
+          "score": 0.026875901875901876
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq015",
+      "mode": "policy",
+      "intent": "policy_scope_lookup",
+      "question": "Which log categories are in scope for our logging standard?",
+      "baseline_scores": {
+        "context_precision": 0.2222,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.7407
+      },
+      "current_scores": {
+        "context_precision": 0.2222,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.7407
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 9,
+      "current_citation_count": 9,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "policy::b5987f24b0684964",
+        "oscal::e5382f8a38f1db4c",
+        "oscal::41a71b392e0d362b",
+        "oscal::8cb56c90e6ebb491",
+        "oscal::2fe81dff71e1ec09",
+        "oscal::67b32c26f840425f",
+        "oscal::62973425347ccb6c",
+        "oscal::8f4385daebdaf399",
+        "policy::2d55577a044dc838"
+      ],
+      "current_citation_ids": [
+        "policy::e889dca05eaece20",
+        "oscal::e5382f8a38f1db4c",
+        "oscal::41a71b392e0d362b",
+        "oscal::2fe81dff71e1ec09",
+        "oscal::8cb56c90e6ebb491",
+        "oscal::67b32c26f840425f",
+        "oscal::62973425347ccb6c",
+        "oscal::8f4385daebdaf399",
+        "policy::2d55577a044dc838"
+      ],
+      "new_citation_ids": [
+        "policy::e889dca05eaece20"
+      ],
+      "dropped_citation_ids": [
+        "policy::b5987f24b0684964"
+      ],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)  > **SYNTHETIC DEMO ARTIFACT — ACADEMIC USE ONLY**  **Document ID:** STD_LOGGING   **Version:** 0.1   **Effective Date:** 2026-02-11   **Owner:** Security Engineering Lead (Fictional Role)    ",
+      "current_answer_preview": "Top evidence excerpts: - [C1] Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)  > **SYNTHETIC DEMO ARTIFACT — ACADEMIC USE ONLY**  **Document ID:** STD_LOGGING **Version:** 0.1 **Effective Date:** 2026-02-11 **Owner:** Security Engineering Lead (Fictional Role)  --- - [C",
+      "current_selected_context": [
+        {
+          "chunk_id": "policy::e889dca05eaece20",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "chunk_type": "text",
+          "rank": 1,
+          "score": 0.03246527777777778
+        },
+        {
+          "chunk_id": "oscal::e5382f8a38f1db4c",
+          "source_type": "oscal_control",
+          "doc_id": "AU-5",
+          "doc_title": "Response to Audit Logging Process Failures",
+          "section_path": "AU-5 Guidance",
+          "chunk_type": "guidance",
+          "rank": 2,
+          "score": 0.032018442622950824
+        },
+        {
+          "chunk_id": "oscal::41a71b392e0d362b",
+          "source_type": "oscal_control",
+          "doc_id": "AU-2",
+          "doc_title": "Event Logging",
+          "section_path": "AU-2 Statement",
+          "chunk_type": "statement",
+          "rank": 3,
+          "score": 0.030621785881252923
+        },
+        {
+          "chunk_id": "oscal::2fe81dff71e1ec09",
+          "source_type": "oscal_control",
+          "doc_id": "AU-2",
+          "doc_title": "Event Logging",
+          "section_path": "AU-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 4,
+          "score": 0.030090497737556562
+        },
+        {
+          "chunk_id": "oscal::8cb56c90e6ebb491",
+          "source_type": "oscal_control",
+          "doc_id": "AU-4",
+          "doc_title": "Audit Log Storage Capacity",
+          "section_path": "AU-4 Guidance",
+          "chunk_type": "guidance",
+          "rank": 5,
+          "score": 0.029827662395050816
+        }
+      ],
+      "note": "1 new cited chunks; 1 dropped cited chunks; current policy sections include Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)"
+    },
+    {
+      "id": "gq016",
+      "mode": "policy",
+      "intent": "policy_roles_lookup",
+      "question": "Which roles are listed in the incident response plan?",
+      "baseline_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "current_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 10,
+      "current_citation_count": 10,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::70d3c33c52eaec18",
+        "oscal::979f6666aeedba81",
+        "oscal::330e897c2f004a2d",
+        "oscal::adc2b441be6b49ff",
+        "oscal::c018a94cfd0915ef",
+        "oscal::f33f3a8d23a5880e",
+        "oscal::72d6859f37be3c6a",
+        "oscal::6660cfb3d8a43ac6",
+        "oscal::7762be0b9cda03ba",
+        "oscal::61d89124c61aa70d"
+      ],
+      "current_citation_ids": [
+        "oscal::70d3c33c52eaec18",
+        "oscal::330e897c2f004a2d",
+        "oscal::979f6666aeedba81",
+        "oscal::c018a94cfd0915ef",
+        "oscal::adc2b441be6b49ff",
+        "oscal::f33f3a8d23a5880e",
+        "oscal::72d6859f37be3c6a",
+        "oscal::6660cfb3d8a43ac6",
+        "oscal::7762be0b9cda03ba",
+        "oscal::61d89124c61aa70d"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [statement]   [item] Develop an incident response plan that:     [item] Provides the organization with a roadmap for implementing its incident response capability;     [item] Describes the structure and organization of the incident response capability;     [item] Provid",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [statement]   [item] Develop an incident response plan that:     [item] Provides the organization with a roadmap for implementing its incident response capability;     [item] Describes the structure and organization of the incident response capability;     [item] Provid",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::70d3c33c52eaec18",
+          "source_type": "oscal_control",
+          "doc_id": "IR-8",
+          "doc_title": "Incident Response Plan",
+          "section_path": "IR-8 Statement",
+          "chunk_type": "statement",
+          "rank": 1,
+          "score": 0.03278688524590164
+        },
+        {
+          "chunk_id": "oscal::330e897c2f004a2d",
+          "source_type": "oscal_control",
+          "doc_id": "IR-4",
+          "doc_title": "Incident Handling",
+          "section_path": "IR-4 Statement",
+          "chunk_type": "statement",
+          "rank": 2,
+          "score": 0.03200204813108039
+        },
+        {
+          "chunk_id": "oscal::979f6666aeedba81",
+          "source_type": "oscal_control",
+          "doc_id": "IR-2",
+          "doc_title": "Incident Response Training",
+          "section_path": "IR-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 3,
+          "score": 0.031754032258064516
+        },
+        {
+          "chunk_id": "oscal::c018a94cfd0915ef",
+          "source_type": "oscal_control",
+          "doc_id": "SA-15",
+          "doc_title": "Development Process, Standards, and Tools",
+          "section_path": "Enhancement SA-15.10: Incident Response Plan",
+          "chunk_type": "enhancement",
+          "rank": 4,
+          "score": 0.030090497737556562
+        },
+        {
+          "chunk_id": "oscal::adc2b441be6b49ff",
+          "source_type": "oscal_control",
+          "doc_id": "IR-2",
+          "doc_title": "Incident Response Training",
+          "section_path": "IR-2 Statement",
+          "chunk_type": "statement",
+          "rank": 5,
+          "score": 0.030090497737556562
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq017",
+      "mode": "policy",
+      "intent": "policy_metadata_lookup",
+      "question": "What system boundary components are listed in our mini SSP?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 7,
+      "current_citation_count": 5,
+      "citation_count_delta": -2,
+      "baseline_citation_ids": [
+        "policy::eecde0d3ff3ceab1",
+        "policy::996ef283d639ccd1",
+        "policy::48fdd7cd3411ded4",
+        "policy::0095abbbca6ed2db",
+        "policy::867fdf60f3ccc14c",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "current_citation_ids": [
+        "policy::012656dfe340a8f7",
+        "policy::f4a6d05a00a1080f",
+        "policy::996ef283d639ccd1",
+        "policy::6d49088351d72f37",
+        "policy::9a29e29d7c304da8"
+      ],
+      "new_citation_ids": [
+        "policy::012656dfe340a8f7",
+        "policy::6d49088351d72f37",
+        "policy::9a29e29d7c304da8",
+        "policy::f4a6d05a00a1080f"
+      ],
+      "dropped_citation_ids": [
+        "policy::0095abbbca6ed2db",
+        "policy::48fdd7cd3411ded4",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::867fdf60f3ccc14c",
+        "policy::eecde0d3ff3ceab1",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] - App tier - API tier - Identity service - Logging pipeline - Database - [C2] 5.0 Data Types  - Operational records - User account data - Audit logs - PII (limited: names, email addresses, user IDs)  6.0 System Boundary (High Level)  - App tier - API tier - Identity ser",
+      "current_answer_preview": "Top evidence excerpts: - [C1] 6.0 System Boundary (High Level)  - App tier - API tier - Identity service - Logging pipeline - Database - [C2] 9.0 Notes  - This SSP is **synthetic and incomplete by design** for evaluation and demo purposes. - [C3] 5.0 Data Types  - Operational records - User account ",
+      "current_selected_context": [
+        {
+          "chunk_id": "policy::012656dfe340a8f7",
+          "source_type": "policy_pdf",
+          "doc_id": "01_mini_ssp",
+          "doc_title": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 6.0 System Boundary (High Level)",
+          "chunk_type": "text",
+          "rank": 1,
+          "score": 0.11201844262295083
+        },
+        {
+          "chunk_id": "policy::f4a6d05a00a1080f",
+          "source_type": "policy_pdf",
+          "doc_id": "01_mini_ssp",
+          "doc_title": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 9.0 Notes",
+          "chunk_type": "text",
+          "rank": 2,
+          "score": 0.07225806451612904
+        },
+        {
+          "chunk_id": "policy::996ef283d639ccd1",
+          "source_type": "policy_pdf",
+          "doc_id": "01_mini_ssp",
+          "doc_title": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Data Types",
+          "chunk_type": null,
+          "rank": 3,
+          "score": 0.05587301587301587
+        },
+        {
+          "chunk_id": "policy::6d49088351d72f37",
+          "source_type": "policy_pdf",
+          "doc_id": "01_mini_ssp",
+          "doc_title": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "chunk_type": "text",
+          "rank": 4,
+          "score": 0.055625
+        },
+        {
+          "chunk_id": "policy::9a29e29d7c304da8",
+          "source_type": "policy_pdf",
+          "doc_id": "01_mini_ssp",
+          "doc_title": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 2.0 System Description",
+          "chunk_type": "text",
+          "rank": 5,
+          "score": 0.055384615384615386
+        }
+      ],
+      "note": "4 new cited chunks; 6 dropped cited chunks; current policy sections include Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 6.0 System Boundary (High Level)"
+    },
+    {
+      "id": "gq018",
+      "mode": "policy",
+      "intent": "policy_exception_lookup",
+      "question": "How are policy exceptions handled in the access control policy?",
+      "baseline_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "current_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 8,
+      "current_citation_count": 8,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "oscal::e8ef93b60c87283c",
+        "oscal::e84f1f5cf22ccc68",
+        "oscal::8d6b6d1723d0f0a3",
+        "oscal::d882203db9bc90df",
+        "oscal::cc3175c4ac34480a",
+        "oscal::06b0c2da9c7e545b",
+        "oscal::79d58f7a6347ff1e",
+        "oscal::44b795ae804b1854"
+      ],
+      "current_citation_ids": [
+        "oscal::e8ef93b60c87283c",
+        "oscal::e84f1f5cf22ccc68",
+        "oscal::8d6b6d1723d0f0a3",
+        "oscal::d882203db9bc90df",
+        "oscal::cc3175c4ac34480a",
+        "oscal::06b0c2da9c7e545b",
+        "oscal::79d58f7a6347ff1e",
+        "oscal::44b795ae804b1854"
+      ],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] [guidance] Access control policy and procedures address the controls in the AC family that are implemented within systems and organizations. The risk management strategy is an important factor in establishing such policies and procedures. Policies and procedures contrib",
+      "current_answer_preview": "Top evidence excerpts: - [C1] [guidance] Access control policy and procedures address the controls in the AC family that are implemented within systems and organizations. The risk management strategy is an important factor in establishing such policies and procedures. Policies and procedures contrib",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::e8ef93b60c87283c",
+          "source_type": "oscal_control",
+          "doc_id": "AC-1",
+          "doc_title": "Policy and Procedures",
+          "section_path": "AC-1 Guidance",
+          "chunk_type": "guidance",
+          "rank": 1,
+          "score": 0.032266458495966696
+        },
+        {
+          "chunk_id": "oscal::e84f1f5cf22ccc68",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.7: Role-based Access Control",
+          "chunk_type": "enhancement",
+          "rank": 2,
+          "score": 0.03055037313432836
+        },
+        {
+          "chunk_id": "oscal::050532a9e23d81e3",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.13: Attribute-based Access Control",
+          "chunk_type": "enhancement",
+          "rank": 3,
+          "score": 0.03036576949620428
+        },
+        {
+          "chunk_id": "oscal::8d6b6d1723d0f0a3",
+          "source_type": "oscal_control",
+          "doc_id": "AC-1",
+          "doc_title": "Policy and Procedures",
+          "section_path": "AC-1 Statement",
+          "chunk_type": "statement",
+          "rank": 4,
+          "score": 0.030090497737556562
+        },
+        {
+          "chunk_id": "oscal::4d40bdc20e4dff38",
+          "source_type": "oscal_control",
+          "doc_id": "AC-3",
+          "doc_title": "Access Enforcement",
+          "section_path": "Enhancement AC-3.3: Mandatory Access Control",
+          "chunk_type": "enhancement",
+          "rank": 5,
+          "score": 0.02964254577157803
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "gq020",
+      "mode": "policy",
+      "intent": "policy_review_lookup",
+      "question": "What is the review cadence in the logging and monitoring standard?",
+      "baseline_scores": {
+        "context_precision": 0.4,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8
+      },
+      "current_scores": {
+        "context_precision": 0.4,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 10,
+      "current_citation_count": 10,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "policy::b5987f24b0684964",
+        "oscal::30e126df70ea9907",
+        "oscal::41a71b392e0d362b",
+        "oscal::1f89cb791e5c3227",
+        "policy::2d55577a044dc838",
+        "policy::33dfa43d5f14c8a1",
+        "policy::d97a4428f49ae01d",
+        "policy::95ed237c6814b41d",
+        "policy::2855054b80905de8",
+        "policy::9973d81e01cadedb"
+      ],
+      "current_citation_ids": [
+        "policy::e7407b177c8b1bc8",
+        "policy::e144cee7d65904e5",
+        "policy::b3c67e7072f75ee1",
+        "policy::570b537c618b21ff",
+        "policy::ab665807d667bab8",
+        "oscal::30e126df70ea9907",
+        "oscal::1f89cb791e5c3227",
+        "oscal::41a71b392e0d362b",
+        "policy::e889dca05eaece20",
+        "policy::3f6980c5843d41bc"
+      ],
+      "new_citation_ids": [
+        "policy::3f6980c5843d41bc",
+        "policy::570b537c618b21ff",
+        "policy::ab665807d667bab8",
+        "policy::b3c67e7072f75ee1",
+        "policy::e144cee7d65904e5",
+        "policy::e7407b177c8b1bc8",
+        "policy::e889dca05eaece20"
+      ],
+      "dropped_citation_ids": [
+        "policy::2855054b80905de8",
+        "policy::2d55577a044dc838",
+        "policy::33dfa43d5f14c8a1",
+        "policy::95ed237c6814b41d",
+        "policy::9973d81e01cadedb",
+        "policy::b5987f24b0684964",
+        "policy::d97a4428f49ae01d"
+      ],
+      "baseline_answer_preview": "Top evidence excerpts: - [C1] Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)  > **SYNTHETIC DEMO ARTIFACT — ACADEMIC USE ONLY**  **Document ID:** STD_LOGGING   **Version:** 0.1   **Effective Date:** 2026-02-11   **Owner:** Security Engineering Lead (Fictional Role)    ",
+      "current_answer_preview": "Top evidence excerpts: - [C1] 5.0 Monitoring & Review  - Alerts on suspicious activity - *Intentional gap:* review cadence not specified for all event types - *Intentional gap:* no monitoring KPIs defined - [C2] 8.0 Review Cadence  Review annually or upon major change. - [C3] 8.0 Review Cadence  Rev",
+      "current_selected_context": [
+        {
+          "chunk_id": "policy::e7407b177c8b1bc8",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Monitoring & Review",
+          "chunk_type": "text",
+          "rank": 1,
+          "score": 0.031544957774465976
+        },
+        {
+          "chunk_id": "policy::e144cee7d65904e5",
+          "source_type": "policy_pdf",
+          "doc_id": "03_incident_response_plan",
+          "doc_title": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional) > 8.0 Review Cadence",
+          "chunk_type": "text",
+          "rank": 2,
+          "score": 0.031544957774465976
+        },
+        {
+          "chunk_id": "policy::b3c67e7072f75ee1",
+          "source_type": "policy_pdf",
+          "doc_id": "01_mini_ssp",
+          "doc_title": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 8.0 Review Cadence",
+          "chunk_type": "text",
+          "rank": 3,
+          "score": 0.03149801587301587
+        },
+        {
+          "chunk_id": "policy::570b537c618b21ff",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 8.0 Review Cadence",
+          "chunk_type": "text",
+          "rank": 4,
+          "score": 0.031054405392392875
+        },
+        {
+          "chunk_id": "policy::ab665807d667bab8",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 7.0 Review Cadence",
+          "chunk_type": "text",
+          "rank": 5,
+          "score": 0.031009615384615385
+        }
+      ],
+      "note": "7 new cited chunks; 7 dropped cited chunks; current policy sections include Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Monitoring & Review"
+    },
+    {
+      "id": "gq031",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "What does our BYOD policy require for mobile device encryption?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 0,
+      "current_citation_count": 0,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [],
+      "current_citation_ids": [],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Mobile Device / BYOD policy.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Mobile Device / BYOD policy.",
+      "current_selected_context": [],
+      "note": ""
+    },
+    {
+      "id": "gq032",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "Where does our media sanitization policy define destruction methods?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 0,
+      "current_citation_count": 0,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [],
+      "current_citation_ids": [],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Media Sanitization Policy / Media Protection Standard.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Media Sanitization Policy / Media Protection Standard.",
+      "current_selected_context": [],
+      "note": ""
+    },
+    {
+      "id": "gq033",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "What are our vendor risk scoring tiers in the supply chain policy?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 0,
+      "current_citation_count": 0,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [],
+      "current_citation_ids": [],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Supply Chain Risk Management Policy / Vendor Risk Standard.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Supply Chain Risk Management Policy / Vendor Risk Standard.",
+      "current_selected_context": [],
+      "note": ""
+    },
+    {
+      "id": "gq034",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "What does our vulnerability management policy set as the scan frequency?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 0,
+      "current_citation_count": 0,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [],
+      "current_citation_ids": [],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Vulnerability Management Policy / Scanning Standard.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Vulnerability Management Policy / Scanning Standard.",
+      "current_selected_context": [],
+      "note": ""
+    },
+    {
+      "id": "gq035",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "What controls does our backup and disaster recovery policy require for offsite replication?",
+      "baseline_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "current_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 2,
+      "current_citation_count": 2,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [
+        "policy::744d0028af912550",
+        "policy::ecd747c44ff0114a"
+      ],
+      "current_citation_ids": [
+        "policy::744d0028af912550",
+        "policy::215538bee9458bea"
+      ],
+      "new_citation_ids": [
+        "policy::215538bee9458bea"
+      ],
+      "dropped_citation_ids": [
+        "policy::ecd747c44ff0114a"
+      ],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Business Continuity Plan / DR Plan.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Business Continuity Plan / DR Plan.",
+      "current_selected_context": [
+        {
+          "chunk_id": "policy::744d0028af912550",
+          "source_type": "policy_pdf",
+          "doc_id": "03_incident_response_plan",
+          "doc_title": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)",
+          "chunk_type": null,
+          "rank": 4,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "policy::215538bee9458bea",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "chunk_type": null,
+          "rank": 6,
+          "score": 0.015873015873015872
+        }
+      ],
+      "note": "1 new cited chunks; 1 dropped cited chunks; current policy sections include Incident Response Plan — Rivermark Operations Portal (ROP) (Fictional)"
+    },
+    {
+      "id": "gq036",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "What are the password complexity rules in our enterprise password policy document?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 0,
+      "current_citation_count": 0,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [],
+      "current_citation_ids": [],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Password Policy / Identity and Authentication Standard.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Password Policy / Identity and Authentication Standard.",
+      "current_selected_context": [],
+      "note": ""
+    },
+    {
+      "id": "gq037",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "How does our endpoint protection standard define EDR quarantine procedures?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 0,
+      "current_citation_count": 0,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [],
+      "current_citation_ids": [],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Endpoint Protection / EDR Standard.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Endpoint Protection / EDR Standard.",
+      "current_selected_context": [],
+      "note": ""
+    },
+    {
+      "id": "gq038",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "What does our cryptographic key management policy require for key rotation?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 0,
+      "current_citation_count": 0,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [],
+      "current_citation_ids": [],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Cryptographic Key Management Policy.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Cryptographic Key Management Policy.",
+      "current_selected_context": [],
+      "note": ""
+    },
+    {
+      "id": "gq039",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "Where is privileged session recording mandated in our PAM standard?",
+      "baseline_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "current_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.6667
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 6,
+      "current_citation_count": 4,
+      "citation_count_delta": -2,
+      "baseline_citation_ids": [
+        "policy::197a8a752146b2f7",
+        "policy::46cb74058f99835e",
+        "policy::d2023c2332ff9b2c",
+        "policy::867fdf60f3ccc14c",
+        "policy::4a3269a4205b4b30",
+        "policy::4b0b3bdef0d7dfe9"
+      ],
+      "current_citation_ids": [
+        "policy::c84511d607b12d2a",
+        "policy::fc927565ec409982",
+        "policy::224efd4664bcb8cd",
+        "policy::46cb74058f99835e"
+      ],
+      "new_citation_ids": [
+        "policy::224efd4664bcb8cd",
+        "policy::c84511d607b12d2a",
+        "policy::fc927565ec409982"
+      ],
+      "dropped_citation_ids": [
+        "policy::197a8a752146b2f7",
+        "policy::4a3269a4205b4b30",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::867fdf60f3ccc14c",
+        "policy::d2023c2332ff9b2c"
+      ],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest PAM / Privileged Access / Session Recording Standard.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest PAM / Privileged Access / Session Recording Standard.",
+      "current_selected_context": [
+        {
+          "chunk_id": "policy::c84511d607b12d2a",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements",
+          "chunk_type": "text",
+          "rank": 1,
+          "score": 0.03492063492063492
+        },
+        {
+          "chunk_id": "policy::fc927565ec409982",
+          "source_type": "policy_pdf",
+          "doc_id": "01_mini_ssp",
+          "doc_title": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Users / Roles",
+          "chunk_type": "text",
+          "rank": 2,
+          "score": 0.03415984593163217
+        },
+        {
+          "chunk_id": "policy::224efd4664bcb8cd",
+          "source_type": "policy_pdf",
+          "doc_id": "04_logging_monitoring_standard",
+          "doc_title": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Logging & Monitoring Standard — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Logging Requirements",
+          "chunk_type": "text",
+          "rank": 3,
+          "score": 0.018032786885245903
+        },
+        {
+          "chunk_id": "policy::46cb74058f99835e",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Procedures",
+          "chunk_type": null,
+          "rank": 4,
+          "score": 0.0171875
+        },
+        {
+          "chunk_id": "policy::f0ae17b00f3fcb7e",
+          "source_type": "policy_pdf",
+          "doc_id": "02_access_control_policy",
+          "doc_title": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional)",
+          "section_path": "Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Procedures",
+          "chunk_type": "text",
+          "rank": 6,
+          "score": 0.01666666666666667
+        }
+      ],
+      "note": "3 new cited chunks; 5 dropped cited chunks; current policy sections include Access Control Policy — Rivermark Operations Portal (ROP) (Fictional) > 4.0 Policy Statements"
+    },
+    {
+      "id": "gq040",
+      "mode": "out_of_scope_policy",
+      "intent": "abstain_missing_policy_evidence",
+      "question": "What is the RTO and RPO in our business continuity plan?",
+      "baseline_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "current_scores": {
+        "context_precision": 1.0,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 1.0
+      },
+      "delta_scores": {
+        "context_precision": 0.0,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": 0.0
+      },
+      "baseline_citation_count": 0,
+      "current_citation_count": 0,
+      "citation_count_delta": 0,
+      "baseline_citation_ids": [],
+      "current_citation_ids": [],
+      "new_citation_ids": [],
+      "dropped_citation_ids": [],
+      "baseline_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Business Continuity Plan / DR Plan.",
+      "current_answer_preview": "Insufficient evidence in the uploaded policy corpus. Please upload/ingest Business Continuity Plan / DR Plan.",
+      "current_selected_context": [],
+      "note": ""
+    },
+    {
+      "id": "gq029",
+      "mode": "policy_vs_control",
+      "intent": "coverage_assessment",
+      "question": "What coverage status should PL-2 receive based on the mini SSP?",
+      "baseline_scores": {
+        "context_precision": 0.5,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8333
+      },
+      "current_scores": {
+        "context_precision": 0.4545,
+        "coverage_accuracy": 1.0,
+        "abstention": 1.0,
+        "overall": 0.8182
+      },
+      "delta_scores": {
+        "context_precision": -0.0455,
+        "coverage_accuracy": 0.0,
+        "abstention": 0.0,
+        "overall": -0.0151
+      },
+      "baseline_citation_count": 12,
+      "current_citation_count": 11,
+      "citation_count_delta": -1,
+      "baseline_citation_ids": [
+        "oscal::90aa4b10736f911c",
+        "oscal::af012dbdcdf04d30",
+        "oscal::9ca72f1f711886b5",
+        "oscal::3fafe306fc914ab9",
+        "oscal::22ee7b8f3eaf1fed",
+        "oscal::1b20fab448b29aa8",
+        "policy::33dfa43d5f14c8a1",
+        "policy::996ef283d639ccd1",
+        "policy::48fdd7cd3411ded4",
+        "policy::f3dff03ff6c80df0",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::20cf134c13a537ee"
+      ],
+      "current_citation_ids": [
+        "oscal::90aa4b10736f911c",
+        "oscal::af012dbdcdf04d30",
+        "oscal::33a91afca2f9af50",
+        "oscal::b92460ae07f4342d",
+        "oscal::5b616f16f2c65514",
+        "oscal::cc57e070cdd7fc26",
+        "policy::996ef283d639ccd1",
+        "policy::4b0b3bdef0d7dfe9",
+        "policy::706c72351be0c466",
+        "policy::6d49088351d72f37",
+        "policy::c84511d607b12d2a"
+      ],
+      "new_citation_ids": [
+        "oscal::33a91afca2f9af50",
+        "oscal::5b616f16f2c65514",
+        "oscal::b92460ae07f4342d",
+        "oscal::cc57e070cdd7fc26",
+        "policy::6d49088351d72f37",
+        "policy::706c72351be0c466",
+        "policy::c84511d607b12d2a"
+      ],
+      "dropped_citation_ids": [
+        "oscal::1b20fab448b29aa8",
+        "oscal::22ee7b8f3eaf1fed",
+        "oscal::3fafe306fc914ab9",
+        "oscal::9ca72f1f711886b5",
+        "policy::20cf134c13a537ee",
+        "policy::33dfa43d5f14c8a1",
+        "policy::48fdd7cd3411ded4",
+        "policy::f3dff03ff6c80df0"
+      ],
+      "baseline_answer_preview": "Coverage: partial Evidence: - [C1] [guidance] System security and privacy plans are scoped to the system and system components within the defined authorization boundary and contain an overview of the security and pr... - [C2] [statement]   [item] Develop security and privacy plans for the system tha",
+      "current_answer_preview": "Coverage: partial Evidence: - [C1] [guidance] System security and privacy plans are scoped to the system and system components within the defined authorization boundary and contain an overview of the security and pr... - [C2] [statement]   [item] Develop security and privacy plans for the system tha",
+      "current_selected_context": [
+        {
+          "chunk_id": "oscal::90aa4b10736f911c",
+          "source_type": "oscal_control",
+          "doc_id": "PL-2",
+          "doc_title": "System Security and Privacy Plans",
+          "section_path": "PL-2 Guidance",
+          "chunk_type": "guidance",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "chunk_id": "oscal::af012dbdcdf04d30",
+          "source_type": "oscal_control",
+          "doc_id": "PL-2",
+          "doc_title": "System Security and Privacy Plans",
+          "section_path": "PL-2 Statement",
+          "chunk_type": "statement",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::33a91afca2f9af50",
+          "source_type": "oscal_control",
+          "doc_id": "PL-8",
+          "doc_title": "Security and Privacy Architectures",
+          "section_path": "PL-8 Statement",
+          "chunk_type": "statement",
+          "rank": 4,
+          "score": 0.016129032258064516
+        },
+        {
+          "chunk_id": "oscal::b92460ae07f4342d",
+          "source_type": "oscal_control",
+          "doc_id": "RA-3",
+          "doc_title": "Risk Assessment",
+          "section_path": "RA-3 Statement",
+          "chunk_type": "statement",
+          "rank": 7,
+          "score": 0.015873015873015872
+        },
+        {
+          "chunk_id": "oscal::5b616f16f2c65514",
+          "source_type": "oscal_control",
+          "doc_id": "SA-4",
+          "doc_title": "Acquisition Process",
+          "section_path": "SA-4 Statement",
+          "chunk_type": "statement",
+          "rank": 8,
+          "score": 0.015625
+        }
+      ],
+      "note": "lower context precision; 7 new cited chunks; 8 dropped cited chunks; current policy sections include Mini-SSP / System Overview — Rivermark Operations Portal (ROP) (Fictional) > 5.0 Data Types"
+    }
+  ]
+}
