@@ -65,6 +65,12 @@ RERANKER_STOPWORDS = {
 }
 PRODUCTION_ENV_VALUES = {"prod", "production"}
 DEFAULT_RERANK_INTENTS = {"policy"}
+DEFAULT_TOP_K = 10
+DEFAULT_DENSE_K = 20
+DEFAULT_BM25_K = 20
+DEFAULT_RRF_K = 60
+DEFAULT_DENSE_WEIGHT = 1.0
+DEFAULT_BM25_WEIGHT = 1.0
 
 
 def build_qdrant_filter(
@@ -122,12 +128,14 @@ def rrf_fuse(
     dense_ranked_ids: Sequence[str],
     bm25_ranked_ids: Sequence[str],
     k: int = 60,
+    dense_weight: float = DEFAULT_DENSE_WEIGHT,
+    bm25_weight: float = DEFAULT_BM25_WEIGHT,
 ) -> List[Tuple[str, float]]:
     scores: Dict[str, float] = {}
     for rank, chunk_id in enumerate(dense_ranked_ids, start=1):
-        scores[chunk_id] = scores.get(chunk_id, 0.0) + 1.0 / (k + rank)
+        scores[chunk_id] = scores.get(chunk_id, 0.0) + (float(dense_weight) / (k + rank))
     for rank, chunk_id in enumerate(bm25_ranked_ids, start=1):
-        scores[chunk_id] = scores.get(chunk_id, 0.0) + 1.0 / (k + rank)
+        scores[chunk_id] = scores.get(chunk_id, 0.0) + (float(bm25_weight) / (k + rank))
     return sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
 
@@ -158,6 +166,44 @@ def _env_float(name: str, default: float) -> float:
         return float(value.strip())
     except ValueError:
         return default
+
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name, "")
+    if not value.strip():
+        return default
+    try:
+        return int(value.strip())
+    except ValueError:
+        return default
+
+
+def _resolve_hybrid_retrieval_config(
+    *,
+    top_k: int = DEFAULT_TOP_K,
+    dense_k: Optional[int] = None,
+    bm25_k: Optional[int] = None,
+    rrf_k: Optional[int] = None,
+    dense_weight: Optional[float] = None,
+    bm25_weight: Optional[float] = None,
+) -> Dict[str, float | int]:
+    resolved_dense_k = dense_k if dense_k is not None else _env_int("RETRIEVAL_DENSE_K", DEFAULT_DENSE_K)
+    resolved_bm25_k = bm25_k if bm25_k is not None else _env_int("RETRIEVAL_BM25_K", DEFAULT_BM25_K)
+    resolved_rrf_k = rrf_k if rrf_k is not None else _env_int("RETRIEVAL_RRF_K", DEFAULT_RRF_K)
+    resolved_dense_weight = (
+        dense_weight if dense_weight is not None else _env_float("RETRIEVAL_DENSE_WEIGHT", DEFAULT_DENSE_WEIGHT)
+    )
+    resolved_bm25_weight = (
+        bm25_weight if bm25_weight is not None else _env_float("RETRIEVAL_BM25_WEIGHT", DEFAULT_BM25_WEIGHT)
+    )
+    return {
+        "top_k": int(top_k),
+        "dense_k": int(resolved_dense_k),
+        "bm25_k": int(resolved_bm25_k),
+        "rrf_k": int(resolved_rrf_k),
+        "dense_weight": float(resolved_dense_weight),
+        "bm25_weight": float(resolved_bm25_weight),
+    }
 
 
 def _normalize_intent(value: Optional[str]) -> str:
@@ -199,6 +245,40 @@ def _should_apply_reranker(intent: Optional[str]) -> bool:
     if not normalized_intent:
         return False
     return normalized_intent in _rerank_intents()
+
+
+def get_retrieval_config_snapshot(
+    *,
+    top_k: int = DEFAULT_TOP_K,
+    dense_k: Optional[int] = None,
+    bm25_k: Optional[int] = None,
+    rrf_k: Optional[int] = None,
+    dense_weight: Optional[float] = None,
+    bm25_weight: Optional[float] = None,
+) -> Dict[str, object]:
+    resolved = _resolve_hybrid_retrieval_config(
+        top_k=top_k,
+        dense_k=dense_k,
+        bm25_k=bm25_k,
+        rrf_k=rrf_k,
+        dense_weight=dense_weight,
+        bm25_weight=bm25_weight,
+    )
+    return {
+        **resolved,
+        "policy_section_weighting_enabled": _env_bool("RETRIEVAL_POLICY_SECTION_WEIGHTING_ENABLED", True),
+        "policy_low_signal_multiplier": _env_float("RETRIEVAL_POLICY_LOW_SIGNAL_MULTIPLIER", 0.6),
+        "policy_high_signal_multiplier": _env_float("RETRIEVAL_POLICY_HIGH_SIGNAL_MULTIPLIER", 1.1),
+        "rerank_enabled": _rerank_enabled(),
+        "rerank_intents": sorted(_rerank_intents()),
+        "rerank_candidates": max(
+            int(resolved["top_k"]),
+            int(_env_float("RERANK_CANDIDATES", 20)),
+        ),
+        "rerank_control_match_boost": _env_float("RERANK_CONTROL_MATCH_BOOST", 0.25),
+        "rerank_heading_overlap_boost": _env_float("RERANK_HEADING_OVERLAP_BOOST", 0.04),
+        "rerank_low_signal_penalty": _env_float("RERANK_LOW_SIGNAL_PENALTY", 0.08),
+    }
 
 
 def _infer_section_type_from_heading(heading: str) -> str:
@@ -348,10 +428,12 @@ def hybrid_retrieve(
     bm25_index_path: Path,
     chunks_path: Path,
     collection_name: str = DEFAULT_COLLECTION,
-    top_k: int = 10,
-    dense_k: int = 20,
-    bm25_k: int = 20,
-    rrf_k: int = 60,
+    top_k: int = DEFAULT_TOP_K,
+    dense_k: Optional[int] = None,
+    bm25_k: Optional[int] = None,
+    rrf_k: Optional[int] = None,
+    dense_weight: Optional[float] = None,
+    bm25_weight: Optional[float] = None,
     source_type: Optional[str] = None,
     control_id: Optional[str] = None,
     doc_id: Optional[str] = None,
@@ -361,6 +443,21 @@ def hybrid_retrieve(
     if inferred_control and not control_id:
         control_id = inferred_control
         source_type = source_type or "oscal_control"
+
+    resolved = _resolve_hybrid_retrieval_config(
+        top_k=top_k,
+        dense_k=dense_k,
+        bm25_k=bm25_k,
+        rrf_k=rrf_k,
+        dense_weight=dense_weight,
+        bm25_weight=bm25_weight,
+    )
+    top_k = int(resolved["top_k"])
+    dense_k = int(resolved["dense_k"])
+    bm25_k = int(resolved["bm25_k"])
+    rrf_k = int(resolved["rrf_k"])
+    dense_weight = float(resolved["dense_weight"])
+    bm25_weight = float(resolved["bm25_weight"])
 
     dense_hits = retrieve_dense(
         query=query,
@@ -375,34 +472,54 @@ def hybrid_retrieve(
 
     dense_ids = [h["chunk_id"] for h in dense_hits]
     bm25_ids = [cid for cid, _ in bm25_hits]
-    fused = rrf_fuse(dense_ids, bm25_ids, k=rrf_k)
+    fused = rrf_fuse(
+        dense_ids,
+        bm25_ids,
+        k=rrf_k,
+        dense_weight=dense_weight,
+        bm25_weight=bm25_weight,
+    )
 
     dense_payload_map = {h["chunk_id"]: (h.get("payload") or {}) for h in dense_hits}
     dense_score_map = {h["chunk_id"]: h["score"] for h in dense_hits}
     bm25_score_map = {cid: score for cid, score in bm25_hits}
+    dense_rank_map = {h["chunk_id"]: rank for rank, h in enumerate(dense_hits, start=1)}
+    bm25_rank_map = {cid: rank for rank, (cid, _) in enumerate(bm25_hits, start=1)}
     chunk_map = _chunks_lookup(chunks_path)
 
-    weighted: List[Tuple[str, float, float, float]] = []
-    for chunk_id, fused_score in fused:
+    weighted: List[Tuple[str, float, float, float, Optional[int], Optional[int]]] = []
+    for chunk_id, fusion_score in fused:
         payload = dict(chunk_map.get(chunk_id, {}))
         payload.update(dense_payload_map.get(chunk_id, {}))
         multiplier = _policy_section_multiplier(query, payload)
-        weighted_score = float(fused_score) * float(multiplier)
-        weighted.append((chunk_id, weighted_score, float(multiplier), float(fused_score)))
+        weighted_score = float(fusion_score) * float(multiplier)
+        weighted.append(
+            (
+                chunk_id,
+                weighted_score,
+                float(multiplier),
+                float(fusion_score),
+                dense_rank_map.get(chunk_id),
+                bm25_rank_map.get(chunk_id),
+            )
+        )
     weighted.sort(key=lambda item: (item[1], item[3], item[0]), reverse=True)
 
     scored: List[Dict] = []
-    for chunk_id, fused_score, section_multiplier, base_rrf_score in weighted:
+    for chunk_id, weighted_score, section_multiplier, fusion_score, dense_rank, bm25_rank in weighted:
         payload = dict(chunk_map.get(chunk_id, {}))
         payload.update(dense_payload_map.get(chunk_id, {}))
         scored.append(
             {
                 "chunk_id": chunk_id,
-                "rrf_score": float(fused_score),
-                "base_rrf_score": float(base_rrf_score),
+                "rrf_score": float(weighted_score),
+                "base_rrf_score": float(fusion_score),
+                "fusion_score": float(fusion_score),
                 "policy_section_multiplier": float(section_multiplier),
                 "dense_score": dense_score_map.get(chunk_id),
                 "bm25_score": bm25_score_map.get(chunk_id),
+                "dense_rank": dense_rank,
+                "bm25_rank": bm25_rank,
                 "payload": payload,
             }
         )
@@ -457,16 +574,19 @@ def main() -> None:
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=6333)
     parser.add_argument("--collection", default=DEFAULT_COLLECTION)
-    parser.add_argument("--top-k", type=int, default=10)
-    parser.add_argument("--dense-k", type=int, default=20)
-    parser.add_argument("--bm25-k", type=int, default=20)
-    parser.add_argument("--rrf-k", type=int, default=60)
+    parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
+    parser.add_argument("--dense-k", type=int, default=None)
+    parser.add_argument("--bm25-k", type=int, default=None)
+    parser.add_argument("--rrf-k", type=int, default=None)
+    parser.add_argument("--dense-weight", type=float, default=None)
+    parser.add_argument("--bm25-weight", type=float, default=None)
     parser.add_argument("--source-type", default=None)
     parser.add_argument("--control-id", default=None)
     parser.add_argument("--doc-id", default=None)
     parser.add_argument("--intent", default=None)
     parser.add_argument("--chunks-path", default="data/index/chunks.parquet")
     parser.add_argument("--bm25-index-path", default="data/bm25_index/bm25_index.pkl")
+    parser.add_argument("--print-config", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -479,6 +599,15 @@ def main() -> None:
     if not bm25_path.exists():
         raise FileNotFoundError(f"Missing BM25 index: {bm25_path}")
 
+    config_snapshot = get_retrieval_config_snapshot(
+        top_k=args.top_k,
+        dense_k=args.dense_k,
+        bm25_k=args.bm25_k,
+        rrf_k=args.rrf_k,
+        dense_weight=args.dense_weight,
+        bm25_weight=args.bm25_weight,
+    )
+
     client = QdrantClient(host=args.host, port=args.port)
     results = hybrid_retrieve(
         query=args.query,
@@ -490,6 +619,8 @@ def main() -> None:
         dense_k=args.dense_k,
         bm25_k=args.bm25_k,
         rrf_k=args.rrf_k,
+        dense_weight=args.dense_weight,
+        bm25_weight=args.bm25_weight,
         source_type=args.source_type,
         control_id=args.control_id,
         doc_id=args.doc_id,
@@ -500,6 +631,10 @@ def main() -> None:
         print(json.dumps(results, indent=2))
         return
 
+    if args.print_config:
+        print("Retrieval config:")
+        print(json.dumps(config_snapshot, indent=2))
+
     for item in results:
         payload = item["payload"]
         title = payload.get("doc_title") or payload.get("doc_id") or "unknown"
@@ -507,8 +642,8 @@ def main() -> None:
         text = (payload.get("chunk_text") or "").replace("\n", " ").strip()
         preview = text[:180] + ("..." if len(text) > 180 else "")
         print(
-            f"{item['rank']:2d}. chunk_id={item['chunk_id']} rrf={item['rrf_score']:.4f} "
-            f"dense={item['dense_score']} bm25={item['bm25_score']}\n"
+            f"{item['rank']:2d}. chunk_id={item['chunk_id']} score={item['rrf_score']:.4f} "
+            f"fusion={item.get('fusion_score')} dense={item['dense_score']} bm25={item['bm25_score']}\n"
             f"    {title} | {section}\n"
             f"    {preview}"
         )

@@ -1,0 +1,78 @@
+{
+  "input_path": "/home/jaz3n/Repository/UMBC-DATA606-Capstone/data/eval/golden_questions.jsonl",
+  "llm_backend": "none",
+  "matrix": [
+    {
+      "name": "equal_no_rerank",
+      "top_k": 10,
+      "dense_k": 20,
+      "bm25_k": 20,
+      "rrf_k": 60,
+      "dense_weight": 1.0,
+      "bm25_weight": 1.0,
+      "final_context_k": 8,
+      "rerank_enabled": false,
+      "rerank_candidates": 20
+    },
+    {
+      "name": "equal_rerank20",
+      "top_k": 10,
+      "dense_k": 20,
+      "bm25_k": 20,
+      "rrf_k": 60,
+      "dense_weight": 1.0,
+      "bm25_weight": 1.0,
+      "final_context_k": 8,
+      "rerank_enabled": true,
+      "rerank_candidates": 20
+    },
+    {
+      "name": "bm25_lean_rerank20",
+      "top_k": 10,
+      "dense_k": 20,
+      "bm25_k": 20,
+      "rrf_k": 60,
+      "dense_weight": 0.9,
+      "bm25_weight": 1.1,
+      "final_context_k": 8,
+      "rerank_enabled": true,
+      "rerank_candidates": 20
+    },
+    {
+      "name": "dense_lean_rerank20",
+      "top_k": 10,
+      "dense_k": 20,
+      "bm25_k": 20,
+      "rrf_k": 60,
+      "dense_weight": 1.1,
+      "bm25_weight": 0.9,
+      "final_context_k": 8,
+      "rerank_enabled": true,
+      "rerank_candidates": 20
+    },
+    {
+      "name": "deeper_rerank30_ctx10",
+      "top_k": 10,
+      "dense_k": 30,
+      "bm25_k": 30,
+      "rrf_k": 60,
+      "dense_weight": 1.0,
+      "bm25_weight": 1.0,
+      "final_context_k": 10,
+      "rerank_enabled": true,
+      "rerank_candidates": 30
+    },
+    {
+      "name": "shallow_no_rerank_ctx6",
+      "top_k": 8,
+      "dense_k": 12,
+      "bm25_k": 12,
+      "rrf_k": 60,
+      "dense_weight": 1.0,
+      "bm25_weight": 1.0,
+      "final_context_k": 6,
+      "rerank_enabled": false,
+      "rerank_candidates": 12
+    }
+  ]
+}

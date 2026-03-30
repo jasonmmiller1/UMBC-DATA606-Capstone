@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import os
 from pathlib import Path
 import re
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -11,10 +12,10 @@ from app.rag.prompts import GROUNDED_POLICY_VS_CONTROL_PROMPT, GROUNDED_SYSTEM_P
 from app.retrieval.service import get_qdrant_client, hybrid_search
 
 
-MIN_UNIQUE_CHUNKS = 3
-MIN_TOP_SCORE = 0.02
-MAX_LLM_CONTEXT_CHUNKS = 8
-MAX_LLM_CHUNK_CHARS = 1200
+DEFAULT_MIN_UNIQUE_CHUNKS = 3
+DEFAULT_MIN_TOP_SCORE = 0.02
+DEFAULT_MAX_LLM_CONTEXT_CHUNKS = 8
+DEFAULT_MAX_LLM_CHUNK_CHARS = 1200
 CONTROL_ID_RE = re.compile(r"\b[A-Z]{2}-\d{1,3}(?:\(\d+\))?\b")
 FIRST_LINE_COVERAGE_RE = re.compile(r"^\s*coverage\s*:\s*(covered|partial|missing|unknown)\s*$", re.IGNORECASE)
 POLICY_QUERY_PHRASES = [
@@ -152,6 +153,42 @@ TRUTH_COVERAGE_PATH = Path(__file__).resolve().parents[2] / "data/truth_table/co
 _TRUTH_COVERAGE_CACHE: Dict[str, str] | None = None
 
 
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name, "")
+    if not value.strip():
+        return default
+    try:
+        return int(value.strip())
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name, "")
+    if not value.strip():
+        return default
+    try:
+        return float(value.strip())
+    except ValueError:
+        return default
+
+
+def _min_unique_chunks() -> int:
+    return _env_int("RETRIEVAL_MIN_UNIQUE_CHUNKS", DEFAULT_MIN_UNIQUE_CHUNKS)
+
+
+def _min_top_score() -> float:
+    return _env_float("RETRIEVAL_MIN_TOP_SCORE", DEFAULT_MIN_TOP_SCORE)
+
+
+def _max_llm_context_chunks() -> int:
+    return _env_int("RETRIEVAL_FINAL_CONTEXT_K", DEFAULT_MAX_LLM_CONTEXT_CHUNKS)
+
+
+def _max_llm_chunk_chars() -> int:
+    return _env_int("RETRIEVAL_MAX_LLM_CHARS", DEFAULT_MAX_LLM_CHUNK_CHARS)
+
+
 def _dedupe_by_chunk_id(results: List[Dict]) -> List[Dict]:
     seen = set()
     deduped: List[Dict] = []
@@ -180,10 +217,21 @@ def _to_retrieved_chunks(results: List[Dict]) -> List[Dict]:
                 "source_type": payload.get("source_type"),
                 "control_id": payload.get("control_id"),
                 "doc_id": payload.get("doc_id"),
+                "doc_title": payload.get("doc_title"),
                 "section_path": payload.get("section_path"),
+                "heading": payload.get("heading"),
+                "chunk_type": payload.get("chunk_type"),
                 "page_start": payload.get("page_start"),
                 "page_end": payload.get("page_end"),
                 "score": item.get("rrf_score"),
+                "rrf_score": item.get("rrf_score"),
+                "base_rrf_score": item.get("base_rrf_score"),
+                "fusion_score": item.get("fusion_score"),
+                "dense_score": item.get("dense_score"),
+                "bm25_score": item.get("bm25_score"),
+                "dense_rank": item.get("dense_rank"),
+                "bm25_rank": item.get("bm25_rank"),
+                "rank": item.get("rank"),
             }
         )
     return chunks
@@ -240,7 +288,7 @@ def _context_block(retrieved_chunks: List[Dict], max_chunks: int = 8) -> str:
             meta += f" doc_id={doc_id}"
         meta += f" section={section}{page}"
         text = str(item.get("chunk_text", "")).replace("\n", " ").strip()
-        blocks.append(f"{meta}\n{text[:MAX_LLM_CHUNK_CHARS]}")
+        blocks.append(f"{meta}\n{text[:_max_llm_chunk_chars()]}")
     return "\n\n".join(blocks)
 
 
@@ -595,10 +643,12 @@ def _confidence(unique_chunks: int, top_score: Optional[float]) -> float:
 
 def _cap_llm_context(retrieved_chunks: List[Dict]) -> List[Dict]:
     capped: List[Dict] = []
-    for item in retrieved_chunks[:MAX_LLM_CONTEXT_CHUNKS]:
+    max_chunks = _max_llm_context_chunks()
+    max_chars = _max_llm_chunk_chars()
+    for item in retrieved_chunks[:max_chunks]:
         copied = dict(item)
         text = str(copied.get("chunk_text", "")).replace("\n", " ").strip()
-        copied["chunk_text"] = text[:MAX_LLM_CHUNK_CHARS]
+        copied["chunk_text"] = text[:max_chars]
         capped.append(copied)
     return capped
 
@@ -1071,7 +1121,7 @@ def answer_question(
 
     unique_count = len(results)
     top_score = float(results[0]["rrf_score"]) if results and results[0].get("rrf_score") is not None else None
-    weak_retrieval = unique_count < MIN_UNIQUE_CHUNKS or (top_score is not None and top_score < MIN_TOP_SCORE)
+    weak_retrieval = unique_count < _min_unique_chunks() or (top_score is not None and top_score < _min_top_score())
     control_count, policy_count = _count_sources(results)
     policy_chunk_count = _policy_chunk_count(results)
     policy_hint_match_chunks = _matching_policy_hint_chunk_count(results, policy_hint_terms)
@@ -1140,10 +1190,11 @@ def answer_question(
 
     confidence = _confidence(unique_count, top_score)
     llm_context = _cap_llm_context(retrieved_chunks)
+    final_context_k = _max_llm_context_chunks()
     user_prompt = (
         f"Question:\n{query}\n\n"
         "Use only the context below.\n\n"
-        f"Context:\n{_context_block(llm_context, max_chunks=MAX_LLM_CONTEXT_CHUNKS)}"
+        f"Context:\n{_context_block(llm_context, max_chunks=final_context_k)}"
     )
     system_prompt = GROUNDED_POLICY_VS_CONTROL_PROMPT if mixed_query else GROUNDED_SYSTEM_PROMPT
     try:

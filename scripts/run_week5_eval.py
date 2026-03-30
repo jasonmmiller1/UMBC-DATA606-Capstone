@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.eval.scoring import score_abstention, score_context_precision, score_coverage_accuracy
 from app.rag.answer import answer_question
+from app.retrieval.retrieve import get_retrieval_config_snapshot
 
 
 def _load_jsonl(path: Path) -> List[Dict[str, Any]]:
@@ -28,6 +29,16 @@ def _load_jsonl(path: Path) -> List[Dict[str, Any]]:
                 continue
             rows.append(json.loads(line))
     return rows
+
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name, "")
+    if not value.strip():
+        return default
+    try:
+        return int(value.strip())
+    except ValueError:
+        return default
 
 
 def _write_jsonl(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
@@ -194,6 +205,8 @@ def _run_one(
     requested_engine: str,
     assess_control_fn: Optional[Callable[..., Any]],
     top_k: int,
+    *,
+    record_retrieval_details: bool = False,
 ) -> Dict[str, Any]:
     qid = row.get("id")
     mode = str(row.get("mode", "") or "")
@@ -251,6 +264,17 @@ def _run_one(
     )
 
     return {
+        "retrieval": (
+            {
+                "config": get_retrieval_config_snapshot(top_k=top_k),
+                "retrieved_chunks": list(response.get("retrieved_chunks") or []),
+                "selected_context_chunks": list(response.get("retrieved_chunks") or [])[
+                    : _env_int("RETRIEVAL_FINAL_CONTEXT_K", 8)
+                ],
+            }
+            if record_retrieval_details
+            else None
+        ),
         "id": qid,
         "mode": mode,
         "intent": intent,
@@ -376,6 +400,7 @@ def main() -> None:
     parser.add_argument("--engine", choices=["auto", "answer", "assess"], default="auto")
     parser.add_argument("--top-k", type=int, default=10)
     parser.add_argument("--limit", type=int, default=0, help="Optional number of questions to run.")
+    parser.add_argument("--record-retrieval-details", action="store_true")
     args = parser.parse_args()
 
     input_path = REPO_ROOT / args.input_path
@@ -406,6 +431,7 @@ def main() -> None:
             requested_engine=args.engine,
             assess_control_fn=assess_control_fn,
             top_k=args.top_k,
+            record_retrieval_details=args.record_retrieval_details,
         )
         results.append(result)
         print(

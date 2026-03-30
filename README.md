@@ -85,6 +85,36 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+`environment.yml` was exported from a working Linux `aarch64` environment and pins `python=3.10.19`. For the most portable restore path on a fresh machine, prefer the `requirements.txt` + `.venv` flow above.
+
+### 1.5) Current developer bring-up
+This is the workflow validated in this repository on **March 16, 2026**:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+cp .env.example .env
+
+docker compose up -d
+./scripts/index_offline.sh
+python -m app.retrieval.run_week2_tests
+
+LLM_BACKEND=none python scripts/run_week5_eval.py \
+  --input-path data/eval/golden_questions.jsonl \
+  --output-jsonl /tmp/rmf_week5_eval_results.jsonl \
+  --summary-path /tmp/rmf_week5_eval_summary.md
+
+python -m unittest discover -s tests -v
+python -m streamlit run app.py
+```
+
+Notes:
+- The repo already includes parsed OSCAL data, the synthetic policy corpus, and local BM25/chunk artifacts, so you do **not** need the raw OSCAL clone for normal local bring-up.
+- `docker compose up -d` starts Qdrant, but the live `rmf_chunks` collection still needs `./scripts/index_offline.sh` to populate it.
+- `LLM_BACKEND=none` is the safest first-run mode. Switch to `openrouter` only after adding a real `OPENROUTER_API_KEY` and model to `.env`.
+
 ### 2) (VS Code) Register the Jupyter kernel
 ```bash
 python -m ipykernel install --user --name rmf-assistant --display-name "Python (rmf-assistant)"
