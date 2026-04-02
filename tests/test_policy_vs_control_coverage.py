@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import csv
+import json
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from app.rag.answer import answer_question
 
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+GOLDEN_QUESTIONS_PATH = REPO_ROOT / "data" / "eval" / "golden_questions.jsonl"
+CONTROLS_TRUTH_PATH = REPO_ROOT / "data" / "truth_table" / "controls_truth.csv"
 
 EXPECTED_TRUTH_COVERAGE = {
     "AU-2": "covered",
@@ -99,6 +106,34 @@ def _mixed_retrieval_side_effect_for(control_id: str):
 
 
 class PolicyVsControlCoverageTest(unittest.TestCase):
+    def test_single_control_golden_coverage_matches_truth_table(self) -> None:
+        with CONTROLS_TRUTH_PATH.open(newline="", encoding="utf-8") as truth_file:
+            truth_coverage_by_control = {
+                row["control_id"]: row["expected_coverage"]
+                for row in csv.DictReader(truth_file)
+            }
+
+        with GOLDEN_QUESTIONS_PATH.open(encoding="utf-8") as golden_file:
+            for line in golden_file:
+                golden = json.loads(line)
+                expected = golden.get("expected", {})
+                if golden.get("mode") != "policy_vs_control":
+                    continue
+                if golden.get("intent") != "coverage_assessment":
+                    continue
+                control_ids = expected.get("expected_control_ids") or []
+                expected_coverage = expected.get("expected_coverage")
+                if len(control_ids) != 1 or expected_coverage is None:
+                    continue
+
+                control_id = control_ids[0]
+                with self.subTest(question_id=golden["id"], control_id=control_id):
+                    self.assertIn(control_id, truth_coverage_by_control)
+                    self.assertEqual(
+                        expected_coverage,
+                        truth_coverage_by_control[control_id],
+                    )
+
     def test_truth_based_coverage_when_llm_unavailable(self) -> None:
         query = "How does our current policy coverage align right now?"
         for control_id, expected_coverage in EXPECTED_TRUTH_COVERAGE.items():
