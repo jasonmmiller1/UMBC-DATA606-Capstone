@@ -208,4 +208,3 @@ dependencies:
       - websocket-client==1.9.0
       - widgetsnbextension==4.0.15
       - xlsxwriter==3.2.9
-prefix: /home/jaz3n/miniconda3/envs/rmf-assistant

@@ -1,0 +1,81 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "RMF: Start Qdrant",
+      "type": "shell",
+      "command": "docker",
+      "args": [
+        "compose",
+        "up",
+        "-d"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RMF: Index Qdrant",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/index_offline.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RMF: Run Tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": [
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RMF: Week 5 Eval (LLM none)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": [
+        "scripts/run_week5_eval.py",
+        "--input-path",
+        "data/eval/golden_questions.jsonl",
+        "--output-jsonl",
+        "/tmp/rmf_week5_eval_results.jsonl",
+        "--summary-path",
+        "/tmp/rmf_week5_eval_summary.md"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "LLM_BACKEND": "none"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RMF: Streamlit App",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": [
+        "-m",
+        "streamlit",
+        "run",
+        "app.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
