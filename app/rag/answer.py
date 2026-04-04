@@ -48,6 +48,7 @@ MIXED_QUERY_HINTS = [
     "coverage",
 ]
 VALID_COVERAGE_LABELS = {"covered", "partial", "missing", "unknown"}
+TIMEOUT_TERMS = ("timeout", "timed out", "deadline exceeded", "read timed out", "connect timeout")
 
 POLICY_DOC_HINT_RULES: List[Tuple[Sequence[str], str, Sequence[str]]] = [
     (
@@ -241,6 +242,25 @@ def _context_block(retrieved_chunks: List[Dict], max_chunks: int = 8) -> str:
 
 def _is_insufficient_message(text: str) -> bool:
     return "insufficient evidence" in (text or "").lower()
+
+
+def _is_timeout_text(text: str) -> bool:
+    lowered = (text or "").lower()
+    return any(term in lowered for term in TIMEOUT_TERMS)
+
+
+def _exception_error_type(exc: Exception) -> str:
+    if isinstance(exc, TimeoutError) or _is_timeout_text(str(exc)):
+        return "timeout"
+    return "error"
+
+
+def _llm_status_from_text(text: str) -> tuple[str, Optional[str]]:
+    if text.startswith("LLM not configured") or text.startswith("OpenRouter backend selected"):
+        return "unavailable", "configuration"
+    if text.startswith("OpenRouter error:") or text.startswith("LLM error:"):
+        return ("timeout", "timeout") if _is_timeout_text(text) else ("error", "backend")
+    return "ok", None
 
 
 def _extract_first_line_coverage_label(text: str) -> Optional[str]:
@@ -689,6 +709,12 @@ def answer_question(
         "predicted_coverage": None,
         "citations": [],
         "retrieved_chunks": [],
+        "query_mode": "unknown",
+        "weak_retrieval": True,
+        "retrieval_status": "not_started",
+        "retrieval_error_type": None,
+        "llm_status": "not_requested",
+        "llm_error_type": None,
     }
     if debug_policy_vs_control:
         base["debug"] = {
@@ -702,6 +728,7 @@ def answer_question(
     inferred_control_id = base_control_id
     is_control_query = base_control_id is not None
     query_mode = _classify_query_mode(query, has_control_id=is_control_query)
+    base["query_mode"] = query_mode
     policy_specific = query_mode == "policy"
     framework_query = query_mode == "framework"
     mixed_query = query_mode == "policy_vs_control"
@@ -769,6 +796,8 @@ def answer_question(
                 "predicted_coverage": None,
                 "citations": citations,
                 "retrieved_chunks": retrieved_chunks,
+                "retrieval_status": "no_evidence",
+                "llm_status": "skipped",
             }
         )
         return base
@@ -812,6 +841,8 @@ def answer_question(
         elif policy_specific:
             if not chunks_path.exists() or not bm25_path.exists():
                 base["draft_answer"] = policy_missing_msg
+                base["retrieval_status"] = "missing_assets"
+                base["llm_status"] = "skipped"
                 return base
 
             policy_results = hybrid_search(
@@ -849,15 +880,22 @@ def answer_question(
         else:
             if not chunks_path.exists() or not bm25_path.exists():
                 base["draft_answer"] = "insufficient evidence. Retrieval assets are missing."
+                base["retrieval_status"] = "missing_assets"
+                base["llm_status"] = "skipped"
                 return base
             raw_results = hybrid_search(query, top_k=top_k, intent=query_mode)
     except RuntimeError as exc:
+        error_type = _exception_error_type(exc)
+        base["retrieval_status"] = error_type
+        base["retrieval_error_type"] = error_type
+        base["llm_status"] = "skipped"
         msg = str(exc)
         if "BM25_INDEX_PATH" in msg or "CHUNKS_PATH" in msg:
             if policy_specific or out_of_scope_policy_mode:
                 base["draft_answer"] = policy_missing_msg
                 base["abstained"] = True
                 base["confidence"] = 0.1
+                base["retrieval_status"] = "missing_assets"
                 return base
             base["draft_answer"] = (
                 "insufficient evidence. Retrieval index paths are not configured. "
@@ -894,6 +932,10 @@ def answer_question(
             )
         return base
     except Exception as exc:
+        error_type = _exception_error_type(exc)
+        base["retrieval_status"] = error_type
+        base["retrieval_error_type"] = error_type
+        base["llm_status"] = "skipped"
         if policy_specific or out_of_scope_policy_mode:
             base["draft_answer"] = policy_missing_msg
             base["abstained"] = True
@@ -914,6 +956,7 @@ def answer_question(
         return base
 
     results = _dedupe_by_chunk_id(raw_results)
+    base["retrieval_status"] = "ok" if results else "no_evidence"
     if policy_specific:
         results = [
             r
@@ -1005,6 +1048,7 @@ def answer_question(
         return base
 
     confidence = _confidence(unique_count, top_score)
+    base["weak_retrieval"] = weak_retrieval
     llm_context = _cap_llm_context(retrieved_chunks)
     final_context_k = _max_llm_context_chunks()
     user_prompt = (
@@ -1022,8 +1066,11 @@ def answer_question(
     except Exception as exc:
         llm_text = f"OpenRouter error: {exc}"
 
-    llm_unavailable = llm_text.startswith("LLM not configured") or llm_text.startswith("OpenRouter backend selected")
-    llm_error = llm_text.startswith("OpenRouter error:") or llm_text.startswith("LLM error:")
+    llm_status, llm_error_type = _llm_status_from_text(llm_text)
+    base["llm_status"] = llm_status
+    base["llm_error_type"] = llm_error_type
+    llm_unavailable = llm_status == "unavailable"
+    llm_error = llm_status in {"error", "timeout"}
     predicted_coverage: Optional[str] = None
     if llm_unavailable:
         # Retrieval-only mode keeps UI useful before an LLM is configured.
@@ -1099,6 +1146,7 @@ def answer_question(
             "predicted_coverage": predicted_coverage,
             "citations": citations,
             "retrieved_chunks": retrieved_chunks,
+            "weak_retrieval": weak_retrieval,
         }
     )
     # Safety guard: never report non-abstained when no evidence chunks exist.
@@ -1107,4 +1155,6 @@ def answer_question(
         if "insufficient evidence" not in base["draft_answer"].lower():
             base["draft_answer"] = "insufficient evidence. No retrieved evidence chunks were found."
         base["confidence"] = min(float(base["confidence"]), 0.1)
+        if base["retrieval_status"] == "ok":
+            base["retrieval_status"] = "no_evidence"
     return base

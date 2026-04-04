@@ -57,6 +57,8 @@ class AnswerFallbackTest(unittest.TestCase):
         self.assertAlmostEqual(float(result["confidence"]), 0.10, places=3)
         self.assertIn("Top evidence excerpts", str(result["draft_answer"]))
         self.assertGreaterEqual(len(result.get("retrieved_chunks", [])), 2)
+        self.assertEqual(result.get("retrieval_status"), "ok")
+        self.assertEqual(result.get("llm_status"), "error")
 
 
 if __name__ == "__main__":

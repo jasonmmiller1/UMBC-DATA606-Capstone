@@ -5,13 +5,14 @@ import html
 import os
 from pathlib import Path
 import re
-import subprocess
 import time
 import uuid
-from typing import Dict, List
+from typing import Any, Dict, List, Mapping
 
 import pandas as pd
 import streamlit as st
+
+from app.rag.answer_state import derive_answer_view_state
 
 REPO_ROOT = Path(__file__).resolve().parent
 DATA_DIR = REPO_ROOT / "data"
@@ -225,9 +226,132 @@ def _status_snapshot() -> Dict[str, int]:
     return {"docs_indexed": docs_count, "chunks_indexed": chunks_count, "qdrant_points": qdrant_points}
 
 
-st.set_page_config(page_title="RMF Assistant - Week 3 MVP", page_icon=":shield:", layout="wide")
-st.title("RMF Assistant - Week 3 RAG Chat MVP")
-st.caption("Evidence-grounded QA over indexed OSCAL + synthetic policy corpus")
+def _is_timeout_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return isinstance(exc, TimeoutError) or any(
+        term in message for term in ("timeout", "timed out", "deadline exceeded", "read timed out")
+    )
+
+
+def _unexpected_backend_result(question: str, exc: Exception) -> Dict[str, Any]:
+    error_type = "timeout" if _is_timeout_error(exc) else "error"
+    if error_type == "timeout":
+        draft = "insufficient evidence. Backend request timed out before a reliable answer was available."
+    else:
+        draft = "insufficient evidence. Backend request failed before a reliable answer was available."
+    return {
+        "query": question,
+        "draft_answer": draft,
+        "content": draft,
+        "abstained": True,
+        "confidence": 0.0,
+        "predicted_coverage": None,
+        "citations": [],
+        "citations_markdown": "- (none)",
+        "retrieved_chunks": [],
+        "query_mode": "unknown",
+        "weak_retrieval": True,
+        "retrieval_status": error_type,
+        "retrieval_error_type": error_type,
+        "llm_status": "not_requested",
+        "llm_error_type": None,
+    }
+
+
+def _assistant_message_payload(result: Mapping[str, Any], citations_markdown: str) -> Dict[str, Any]:
+    payload = dict(result)
+    payload.update(
+        {
+            "role": "assistant",
+            "content": str(result.get("draft_answer", "")),
+            "citations_markdown": citations_markdown,
+        }
+    )
+    return payload
+
+
+def _chunk_meta(chunk: Mapping[str, Any]) -> str:
+    source_type = chunk.get("source_type") or "unknown"
+    control_id = chunk.get("control_id")
+    doc_label = chunk.get("doc_title") or chunk.get("doc_id")
+    section = chunk.get("section_path") or "n/a"
+    page_start = chunk.get("page_start")
+    page_end = chunk.get("page_end")
+    parts = [str(source_type)]
+    if control_id:
+        parts.append(str(control_id))
+    if doc_label:
+        parts.append(str(doc_label))
+    parts.append(str(section))
+    if page_start is not None and page_end is not None:
+        parts.append(f"pages {page_start}-{page_end}")
+    elif page_start is not None:
+        parts.append(f"page {page_start}")
+    return " | ".join(parts)
+
+
+def _render_retrieved_evidence(chunks: List[Dict[str, Any]]) -> None:
+    evidence = chunks[:10]
+    if not evidence:
+        st.markdown("No retrieved evidence available.")
+        return
+    for idx, chunk in enumerate(evidence, start=1):
+        chunk_label = chunk.get("citation_id") or f"E{idx}"
+        title = (
+            chunk.get("doc_title")
+            or chunk.get("doc_id")
+            or chunk.get("control_id")
+            or "Retrieved source"
+        )
+        text = str(chunk.get("chunk_text", "")).replace("\n", " ").strip()
+        preview = text[:500] + ("..." if len(text) > 500 else "")
+        st.markdown(f"**{chunk_label} - {title}**")
+        st.caption(_chunk_meta(chunk))
+        st.code(preview or "(empty)")
+
+
+def _render_assistant_message(message: Mapping[str, Any]) -> None:
+    if message.get("message_type") == "rate_limit":
+        st.warning(str(message.get("content", "")))
+        return
+
+    view = derive_answer_view_state(message)
+    banner = {
+        "success": st.success,
+        "warning": st.warning,
+        "info": st.info,
+        "error": st.error,
+    }.get(view.tone, st.info)
+    banner(f"{view.title}: {view.summary}")
+    st.caption(view.support_label)
+
+    if view.answer_body:
+        st.markdown(f"**{view.answer_label}**")
+        st.markdown(view.answer_body)
+
+    if view.state in {"strong_answer", "partial_answer", "conflicting_evidence"}:
+        st.caption("Generated explanation is shown above. Retrieved citations and raw evidence are listed below.")
+    elif view.state == "retrieval_only":
+        st.caption("This response is a retrieval-only fallback. Use the citations and excerpts below as the source of truth.")
+    else:
+        st.caption("No confident answer is being presented.")
+
+    citations_markdown = str(message.get("citations_markdown", "- (none)"))
+    with st.expander("Source citations", expanded=view.state in {"strong_answer", "partial_answer", "conflicting_evidence"}):
+        if citations_markdown.strip() == "- (none)":
+            st.markdown("No citations available.")
+        else:
+            st.markdown(citations_markdown)
+    with st.expander(
+        "Retrieved evidence",
+        expanded=view.state in {"partial_answer", "conflicting_evidence", "retrieval_only"},
+    ):
+        _render_retrieved_evidence(list(message.get("retrieved_chunks", []) or []))
+
+
+st.set_page_config(page_title="RMF Assistant", page_icon=":shield:", layout="wide")
+st.title("RMF Assistant")
+st.caption("Grounded question answering over indexed OSCAL controls and uploaded policy documents.")
 
 with st.sidebar:
     st.header("Data")
@@ -273,24 +397,6 @@ with st.sidebar:
     else:
         st.caption("Corpus status is deferred for fast startup. Click 'Load Corpus Status' when needed.")
 
-    if st.button("Run Week 2 Retrieval Tests"):
-        with st.spinner("Running Week 2 retrieval suite..."):
-            proc = subprocess.run(
-                ["python", "-m", "app.retrieval.run_week2_tests"],
-                cwd=str(REPO_ROOT),
-                capture_output=True,
-                text=True,
-            )
-        if proc.returncode == 0:
-            st.success("Week 2 retrieval suite completed.")
-        else:
-            st.error("Week 2 retrieval suite failed.")
-        with st.expander("Week 2 suite logs"):
-            if proc.stdout:
-                st.code(proc.stdout)
-            if proc.stderr:
-                st.code(proc.stderr)
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "last_llm_call_ts" not in st.session_state:
@@ -298,38 +404,10 @@ if "last_llm_call_ts" not in st.session_state:
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
         if msg["role"] == "assistant":
-            st.caption(f"confidence={msg.get('confidence', 0.0)} | abstained={msg.get('abstained', False)}")
-            with st.expander("Citations"):
-                st.markdown(msg.get("citations_markdown", "- (none)"))
-            with st.expander("Retrieved Evidence"):
-                chunks = msg.get("retrieved_chunks", [])[:10]
-                if not chunks:
-                    st.markdown("- (none)")
-                for idx, chunk in enumerate(chunks, start=1):
-                    source_type = chunk.get("source_type") or "unknown"
-                    control_id = chunk.get("control_id")
-                    doc_id = chunk.get("doc_id")
-                    section = chunk.get("section_path") or "n/a"
-                    page_start = chunk.get("page_start")
-                    page_end = chunk.get("page_end")
-                    page = ""
-                    if page_start is not None and page_end is not None:
-                        page = f" p.{page_start}-{page_end}"
-                    elif page_start is not None:
-                        page = f" p.{page_start}"
-                    meta = f"{source_type}"
-                    if control_id:
-                        meta += f" | {control_id}"
-                    if doc_id:
-                        meta += f" | {doc_id}"
-                    meta += f" | {section}{page}"
-                    text = str(chunk.get("chunk_text", "")).replace("\n", " ").strip()
-                    preview = text[:500] + ("..." if len(text) > 500 else "")
-                    st.markdown(f"{idx}. `{chunk.get('chunk_id', 'unknown')}`")
-                    st.caption(meta)
-                    st.code(preview or "(empty)")
+            _render_assistant_message(msg)
+        else:
+            st.markdown(msg["content"])
 
 user_question = st.chat_input("Ask about RMF controls or policy evidence...")
 if user_question:
@@ -352,6 +430,7 @@ if user_question:
         st.session_state.messages.append(
             {
                 "role": "assistant",
+                "message_type": "rate_limit",
                 "content": rate_msg,
                 "citations_markdown": "- (none)",
                 "retrieved_chunks": [],
@@ -362,52 +441,17 @@ if user_question:
         st.stop()
 
     with st.chat_message("assistant"):
-        with st.spinner("Retrieving evidence..."):
-            result = answer_question(
-                user_question,
-                top_k=10,
-            )
+        with st.spinner("Retrieving evidence and preparing response..."):
+            try:
+                result = answer_question(
+                    user_question,
+                    top_k=10,
+                )
+            except Exception as exc:
+                result = _unexpected_backend_result(user_question, exc)
         st.session_state.last_llm_call_ts = time.monotonic()
-        st.markdown(result["draft_answer"])
         citations_markdown = format_citations_markdown(result.get("citations", []))
-        st.caption(f"confidence={result['confidence']} | abstained={result['abstained']}")
-        with st.expander("Citations"):
-            st.markdown(citations_markdown)
-        with st.expander("Retrieved Evidence"):
-            chunks = result.get("retrieved_chunks", [])[:10]
-            if not chunks:
-                st.markdown("- (none)")
-            for idx, chunk in enumerate(chunks, start=1):
-                source_type = chunk.get("source_type") or "unknown"
-                control_id = chunk.get("control_id")
-                doc_id = chunk.get("doc_id")
-                section = chunk.get("section_path") or "n/a"
-                page_start = chunk.get("page_start")
-                page_end = chunk.get("page_end")
-                page = ""
-                if page_start is not None and page_end is not None:
-                    page = f" p.{page_start}-{page_end}"
-                elif page_start is not None:
-                    page = f" p.{page_start}"
-                meta = f"{source_type}"
-                if control_id:
-                    meta += f" | {control_id}"
-                if doc_id:
-                    meta += f" | {doc_id}"
-                meta += f" | {section}{page}"
-                text = str(chunk.get("chunk_text", "")).replace("\n", " ").strip()
-                preview = text[:500] + ("..." if len(text) > 500 else "")
-                st.markdown(f"{idx}. `{chunk.get('chunk_id', 'unknown')}`")
-                st.caption(meta)
-                st.code(preview or "(empty)")
+        assistant_message = _assistant_message_payload(result, citations_markdown)
+        _render_assistant_message(assistant_message)
 
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": result["draft_answer"],
-            "citations_markdown": citations_markdown,
-            "retrieved_chunks": result.get("retrieved_chunks", []),
-            "confidence": result["confidence"],
-            "abstained": result["abstained"],
-        }
-    )
+    st.session_state.messages.append(assistant_message)
