@@ -131,6 +131,24 @@ def _is_timeout(result: Mapping[str, Any]) -> bool:
     return any(term in combined for term in TIMEOUT_TERMS)
 
 
+def _llm_issue_summary(error_type: str) -> str:
+    issue = (error_type or "").strip().lower()
+    return {
+        "auth": "OpenRouter authentication failed.",
+        "missing_api_key": "OpenRouter is selected, but no API key is configured.",
+        "configuration": "OpenRouter is selected, but it is not fully configured.",
+        "timeout": "OpenRouter timed out.",
+        "rate_limit": "OpenRouter hit a rate limit.",
+        "quota": "OpenRouter hit a quota or credit limit.",
+        "model_error": "OpenRouter could not use the requested model.",
+        "provider_error": "OpenRouter returned a provider error.",
+        "invalid_request": "OpenRouter rejected the request.",
+        "backend": "OpenRouter request failed.",
+        "backend_error": "OpenRouter request failed.",
+        "unexpected_failure": "OpenRouter failed unexpectedly.",
+    }.get(issue, "OpenRouter request failed.")
+
+
 def derive_answer_view_state(result: Mapping[str, Any]) -> AnswerViewState:
     draft_answer = _normalized_text(result.get("draft_answer"))
     citations = result.get("citations") or []
@@ -142,6 +160,7 @@ def derive_answer_view_state(result: Mapping[str, Any]) -> AnswerViewState:
     weak_retrieval = bool(result.get("weak_retrieval"))
     citation_count = len(citations)
     retrieved_count = len(retrieved_chunks)
+    llm_error_type = _normalized_text(result.get("llm_error_type")).lower()
     missing_inline_citations = llm_status == "ok" and not abstained and not _contains_inline_citations(draft_answer)
     conflicting = _has_conflict_markers(draft_answer) or _has_conflicting_chunk_phrases(retrieved_chunks)
     timeout = _is_timeout(result)
@@ -155,6 +174,8 @@ def derive_answer_view_state(result: Mapping[str, Any]) -> AnswerViewState:
             if timeout
             else "The request could not be completed, so no reliable answer was shown."
         )
+        if llm_status in {"error", "timeout"} and llm_error_type:
+            summary += f" {_llm_issue_summary(llm_error_type)}"
         answer_body = _display_answer_body(
             draft_answer,
             state="backend_error",
@@ -173,11 +194,14 @@ def derive_answer_view_state(result: Mapping[str, Any]) -> AnswerViewState:
 
     if llm_status in {"unavailable", "error", "timeout"} and retrieved_count > 0:
         if llm_status == "unavailable":
-            summary = "Retrieved evidence is available, but answer generation is not configured right now."
+            if llm_error_type in {"missing_api_key", "configuration"}:
+                summary = _llm_issue_summary(llm_error_type) + " Retrieved evidence is available, so the app is showing a retrieval-only fallback."
+            else:
+                summary = "Retrieved evidence is available, but answer generation is not configured right now."
         elif timeout:
             summary = "Retrieved evidence is available, but answer generation timed out."
         else:
-            summary = "Retrieved evidence is available, but answer generation failed."
+            summary = _llm_issue_summary(llm_error_type) + " Retrieved evidence is available, so the app is showing a retrieval-only fallback."
         if weak_retrieval or citation_count == 0:
             summary += " Treat the evidence below as limited."
         answer_body = _display_answer_body(

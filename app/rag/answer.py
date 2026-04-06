@@ -263,6 +263,12 @@ def _llm_status_from_text(text: str) -> tuple[str, Optional[str]]:
     return "ok", None
 
 
+def _coerce_llm_call_metadata(raw: object) -> Dict[str, object]:
+    if isinstance(raw, dict):
+        return dict(raw)
+    return {}
+
+
 def _extract_first_line_coverage_label(text: str) -> Optional[str]:
     if not text:
         return None
@@ -715,6 +721,14 @@ def answer_question(
         "retrieval_error_type": None,
         "llm_status": "not_requested",
         "llm_error_type": None,
+        "llm_backend": "unknown",
+        "llm_mode": "unknown",
+        "llm_requested_model": None,
+        "llm_used_model": None,
+        "llm_fallback_triggered": False,
+        "llm_retries": 0,
+        "llm_latency_ms": None,
+        "llm_error_message": None,
     }
     if debug_policy_vs_control:
         base["debug"] = {
@@ -803,6 +817,22 @@ def answer_question(
         return base
 
     llm_client = get_llm_client()
+    llm_backend_info = _coerce_llm_call_metadata(
+        llm_client.describe_backend() if hasattr(llm_client, "describe_backend") else {}
+    )
+    if llm_backend_info:
+        base.update(
+            {
+                "llm_backend": llm_backend_info.get("backend") or base["llm_backend"],
+                "llm_mode": llm_backend_info.get("mode") or base["llm_mode"],
+                "llm_requested_model": llm_backend_info.get("requested_model"),
+                "llm_used_model": llm_backend_info.get("used_model"),
+                "llm_fallback_triggered": bool(llm_backend_info.get("fallback_triggered", False)),
+                "llm_retries": int(llm_backend_info.get("retries") or 0),
+                "llm_latency_ms": llm_backend_info.get("latency_ms"),
+                "llm_error_message": llm_backend_info.get("error_message"),
+            }
+        )
 
     try:
         if mixed_query:
@@ -1066,9 +1096,30 @@ def answer_question(
     except Exception as exc:
         llm_text = f"OpenRouter error: {exc}"
 
-    llm_status, llm_error_type = _llm_status_from_text(llm_text)
+    llm_call_meta = _coerce_llm_call_metadata(
+        llm_client.last_call_metadata() if hasattr(llm_client, "last_call_metadata") else {}
+    )
+    call_status = str(llm_call_meta.get("status", "") or "").strip().lower()
+    call_error_type = str(llm_call_meta.get("error_type", "") or "").strip().lower() or None
+    if call_status in {"ok", "unavailable", "timeout", "error"}:
+        llm_status = call_status
+        llm_error_type = call_error_type
+    else:
+        llm_status, llm_error_type = _llm_status_from_text(llm_text)
     base["llm_status"] = llm_status
     base["llm_error_type"] = llm_error_type
+    base["llm_backend"] = llm_call_meta.get("backend") or base["llm_backend"]
+    base["llm_mode"] = llm_call_meta.get("mode") or base["llm_mode"]
+    base["llm_requested_model"] = llm_call_meta.get("requested_model") or base["llm_requested_model"]
+    base["llm_used_model"] = llm_call_meta.get("used_model") or base["llm_used_model"]
+    base["llm_fallback_triggered"] = bool(
+        llm_call_meta.get("fallback_triggered", base["llm_fallback_triggered"])
+    )
+    base["llm_retries"] = int(llm_call_meta.get("retries") or base["llm_retries"] or 0)
+    base["llm_latency_ms"] = llm_call_meta.get("latency_ms", base["llm_latency_ms"])
+    base["llm_error_message"] = llm_call_meta.get("error_message") or (
+        llm_text if llm_status in {"unavailable", "timeout", "error"} else None
+    )
     llm_unavailable = llm_status == "unavailable"
     llm_error = llm_status in {"error", "timeout"}
     predicted_coverage: Optional[str] = None

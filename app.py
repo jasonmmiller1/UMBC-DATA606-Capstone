@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Mapping
 import pandas as pd
 import streamlit as st
 
+from app.llm.client import get_llm_client
 from app.rag.answer_state import derive_answer_view_state
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -270,6 +271,84 @@ def _assistant_message_payload(result: Mapping[str, Any], citations_markdown: st
     return payload
 
 
+def _format_backend_name(name: str) -> str:
+    normalized = str(name or "").strip().lower()
+    if normalized == "openrouter":
+        return "OpenRouter"
+    if normalized == "none":
+        return "Disabled"
+    if not normalized:
+        return "Unknown"
+    return normalized
+
+
+def _configured_llm_mode_caption() -> str:
+    info = {}
+    try:
+        info = dict(get_llm_client().describe_backend())
+    except Exception:
+        info = {}
+
+    backend = str(info.get("backend") or "unknown")
+    mode = str(info.get("mode") or "unknown")
+    status = str(info.get("status") or "unknown")
+    requested_model = str(info.get("requested_model") or "").strip()
+    error_type = str(info.get("error_type") or "").strip()
+
+    if backend == "none" or mode == "retrieval_only" and backend == "none":
+        return "Mode: Retrieval only. The app will answer from retrieved evidence without LLM generation."
+    if backend == "openrouter" and status == "ready":
+        model_suffix = f" Requested model: `{requested_model}`." if requested_model else ""
+        return f"Mode: Retrieval + OpenRouter.{model_suffix}"
+    if backend == "openrouter":
+        issue = f" ({error_type})" if error_type else ""
+        model_suffix = f" Requested model: `{requested_model}`." if requested_model else ""
+        return f"Mode: Retrieval-only fallback. OpenRouter is selected but unavailable{issue}.{model_suffix}"
+    return "Mode: Retrieval behavior may vary based on current backend configuration."
+
+
+def _response_backend_caption(message: Mapping[str, Any]) -> str:
+    backend = _format_backend_name(str(message.get("llm_backend") or "unknown"))
+    mode = str(message.get("llm_mode") or "unknown")
+    status = str(message.get("llm_status") or "unknown")
+    requested_model = str(message.get("llm_requested_model") or "").strip()
+    used_model = str(message.get("llm_used_model") or "").strip()
+    fallback_triggered = bool(message.get("llm_fallback_triggered"))
+    retries = int(message.get("llm_retries") or 0)
+    latency_ms = message.get("llm_latency_ms")
+    error_type = str(message.get("llm_error_type") or "").strip()
+
+    if mode == "retrieval_only" and backend == "Disabled":
+        return "Mode: Retrieval only | LLM disabled"
+
+    parts: List[str] = []
+    if mode == "retrieval_plus_llm":
+        parts.append(f"Mode: Retrieval + {backend}")
+    elif mode == "retrieval_only":
+        parts.append("Mode: Retrieval-only fallback")
+    else:
+        parts.append(f"LLM backend: {backend}")
+
+    if requested_model:
+        parts.append(f"Requested model: {requested_model}")
+    if used_model:
+        parts.append(f"Used model: {used_model}")
+    if fallback_triggered:
+        parts.append("Model fallback triggered")
+    if status == "not_requested":
+        parts.append("LLM call skipped")
+    elif status and status != "unknown":
+        status_label = status
+        if error_type:
+            status_label += f" ({error_type})"
+        parts.append(f"LLM status: {status_label}")
+    if retries:
+        parts.append(f"Retries: {retries}")
+    if latency_ms is not None:
+        parts.append(f"Latency: {latency_ms} ms")
+    return " | ".join(parts)
+
+
 def _chunk_meta(chunk: Mapping[str, Any]) -> str:
     source_type = chunk.get("source_type") or "unknown"
     control_id = chunk.get("control_id")
@@ -324,6 +403,13 @@ def _render_assistant_message(message: Mapping[str, Any]) -> None:
     }.get(view.tone, st.info)
     banner(f"{view.title}: {view.summary}")
     st.caption(view.support_label)
+    st.caption(_response_backend_caption(message))
+    if str(message.get("llm_backend") or "").strip().lower() == "openrouter" and str(
+        message.get("llm_status") or ""
+    ).strip().lower() in {"unavailable", "error", "timeout"}:
+        llm_note = str(message.get("llm_error_message") or "").strip()
+        if llm_note:
+            st.caption(f"LLM note: {llm_note}")
 
     if view.answer_body:
         st.markdown(f"**{view.answer_label}**")
@@ -352,6 +438,7 @@ def _render_assistant_message(message: Mapping[str, Any]) -> None:
 st.set_page_config(page_title="RMF Assistant", page_icon=":shield:", layout="wide")
 st.title("RMF Assistant")
 st.caption("Grounded question answering over indexed OSCAL controls and uploaded policy documents.")
+st.caption(_configured_llm_mode_caption())
 
 with st.sidebar:
     st.header("Data")

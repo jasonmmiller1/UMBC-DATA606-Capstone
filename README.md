@@ -115,6 +115,31 @@ Notes:
 - `docker compose up -d` starts Qdrant, but the live `rmf_chunks` collection still needs `./scripts/index_offline.sh` to populate it.
 - `LLM_BACKEND=none` is the safest first-run mode. Switch to `openrouter` only after adding a real `OPENROUTER_API_KEY` and model to `.env`.
 
+### 1.6) LLM mode switching
+
+Retrieval-only mode:
+
+```bash
+LLM_BACKEND=none python -m streamlit run app.py
+```
+
+Retrieval + OpenRouter mode:
+
+```bash
+LLM_BACKEND=openrouter \
+OPENROUTER_MODEL="<paid-model-id>" \
+OPENROUTER_API_KEY="<your-key>" \
+python -m streamlit run app.py
+```
+
+Optional OpenRouter tuning env vars:
+- `OPENROUTER_FALLBACK_MODELS` for model fallback order
+- `OPENROUTER_TIMEOUT_SECONDS` for request timeout
+- `OPENROUTER_RETRY_COUNT` for bounded retries
+- `OPENROUTER_MAX_TOKENS` and `OPENROUTER_TEMPERATURE` for generation controls
+
+The app keeps retrieval grounding in front of the LLM and degrades to retrieval-only fallback when OpenRouter is unavailable, misconfigured, rate-limited, or otherwise fails.
+
 ### 2) (VS Code) Register the Jupyter kernel
 ```bash
 python -m ipykernel install --user --name rmf-assistant --display-name "Python (rmf-assistant)"
@@ -229,6 +254,29 @@ python scripts/run_week5_eval.py \
 Why paid models for eval reliability:
 - `:free` models are more likely to hit provider limits (429), transient upstream failures (502), or malformed responses.
 - paid models generally provide steadier throughput and fewer fallback/retry events, which improves eval consistency.
+
+Focused demo comparison workflow:
+
+```bash
+LLM_BACKEND=openrouter \
+OPENROUTER_MODEL="<paid-model-id>" \
+OPENROUTER_API_KEY="<your-key>" \
+python scripts/run_demo_mode_comparison.py \
+  --input-path data/eval/demo_questions.jsonl \
+  --output-json data/eval/demo_mode_comparison.json \
+  --output-md data/eval/demo_mode_comparison.md
+```
+
+This comparison runner always executes the same curated demo questions in:
+- retrieval-only mode
+- retrieval + OpenRouter mode
+
+It records:
+- answer state and abstention behavior
+- citation counts and weak-grounding risk flags
+- backend/model/fallback metadata
+- end-to-end latency
+- per-question notes on whether OpenRouter improved or hurt the demo experience
 
 ---
 

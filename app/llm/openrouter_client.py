@@ -4,20 +4,23 @@ import logging
 import os
 import random
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+
+from app.llm.client import LLMClient, _llm_metadata
 
 
 logger = logging.getLogger(__name__)
 
 
-class OpenRouterLLMClient:
+class OpenRouterLLMClient(LLMClient):
     """
     OpenRouter Chat Completions client.
 
-    This backend uses the OpenAI-compatible chat endpoint and can be plugged
-    into the shared LLM abstraction through get_llm_client().
+    This backend uses the OpenAI-compatible chat endpoint and reports
+    per-call metadata so the app can surface mode/model/fallback behavior
+    without loosening grounded retrieval guardrails.
     """
 
     endpoint = "https://openrouter.ai/api/v1/chat/completions"
@@ -42,6 +45,49 @@ class OpenRouterLLMClient:
             self.fallback_models = list(self.default_fallback_models)
         self.app_url = os.getenv("OPENROUTER_APP_URL", "").strip()
         self.app_title = os.getenv("OPENROUTER_APP_TITLE", "").strip()
+        self._backend_info = _llm_metadata(
+            backend="openrouter",
+            mode="retrieval_plus_llm",
+            requested_model=self.model or None,
+            status="ready",
+            note="OpenRouter backend configured.",
+        )
+        self._last_call = dict(self._backend_info)
+
+    def describe_backend(self) -> Dict[str, Any]:
+        return dict(self._backend_info)
+
+    def last_call_metadata(self) -> Dict[str, Any]:
+        return dict(self._last_call)
+
+    def _set_last_call(
+        self,
+        *,
+        used_model: Optional[str],
+        fallback_triggered: bool,
+        retries: int,
+        latency_ms: Optional[int],
+        status: str,
+        error_type: Optional[str] = None,
+        error_message: Optional[str] = None,
+        note: Optional[str] = None,
+    ) -> None:
+        self._last_call = _llm_metadata(
+            backend="openrouter",
+            mode="retrieval_plus_llm",
+            requested_model=self.model or None,
+            used_model=used_model,
+            fallback_triggered=fallback_triggered,
+            retries=retries,
+            latency_ms=latency_ms,
+            status=status,
+            error_type=error_type,
+            error_message=error_message,
+            note=note,
+        )
+
+    def _elapsed_ms(self, start_time: float) -> int:
+        return int(round((time.monotonic() - start_time) * 1000))
 
     def _sleep_for_retry(self, attempt: int) -> None:
         base_delay = self.retry_backoff_seconds * (2**attempt)
@@ -77,6 +123,24 @@ class OpenRouterLLMClient:
             lines.append(f"{meta}\n{text[:1000]}")
         return "\n\n".join(lines)
 
+    def _env_float(self, name: str, default: float) -> float:
+        value = os.getenv(name, "").strip()
+        if not value:
+            return default
+        try:
+            return float(value)
+        except ValueError:
+            return default
+
+    def _env_int(self, name: str, default: int) -> int:
+        value = os.getenv(name, "").strip()
+        if not value:
+            return default
+        try:
+            return int(value)
+        except ValueError:
+            return default
+
     def _retry_count(self, **kwargs: Any) -> int:
         if "retry_count" in kwargs:
             raw = str(kwargs.get("retry_count", self.default_retry_count))
@@ -87,14 +151,85 @@ class OpenRouterLLMClient:
         except (TypeError, ValueError):
             return self.default_retry_count
 
+    def _temperature(self, **kwargs: Any) -> float:
+        if "temperature" in kwargs:
+            try:
+                return float(kwargs.get("temperature", 0.2))
+            except (TypeError, ValueError):
+                return 0.2
+        return self._env_float("OPENROUTER_TEMPERATURE", 0.2)
+
+    def _max_tokens(self, **kwargs: Any) -> int:
+        if "max_tokens" in kwargs:
+            try:
+                return int(kwargs.get("max_tokens", 600))
+            except (TypeError, ValueError):
+                return 600
+        return self._env_int("OPENROUTER_MAX_TOKENS", 600)
+
+    def _timeout(self, **kwargs: Any) -> float:
+        if "timeout" in kwargs:
+            try:
+                return float(kwargs.get("timeout", 60))
+            except (TypeError, ValueError):
+                return 60.0
+        return self._env_float("OPENROUTER_TIMEOUT_SECONDS", 60.0)
+
+    def _classify_error(
+        self,
+        status_code: Optional[int],
+        message: str,
+        *,
+        err_code: Any = None,
+    ) -> Tuple[str, str]:
+        normalized = (message or "").strip()
+        lowered = normalized.lower()
+        err_code_text = str(err_code or "").strip().lower()
+
+        if status_code in {401, 403}:
+            return "auth", "OpenRouter error: authentication failed (check OPENROUTER_API_KEY and model access)."
+        if "quota" in lowered or "credit" in lowered or "insufficient" in lowered and "balance" in lowered:
+            return "quota", "OpenRouter error: quota or credit limit reached."
+        if status_code == 429:
+            return "rate_limit", "OpenRouter error: rate limit reached. Please retry shortly."
+        if "timeout" in lowered or "timed out" in lowered or "deadline exceeded" in lowered:
+            return "timeout", "OpenRouter error: request timed out."
+        if status_code in {400, 404, 422}:
+            if "model" in lowered or "provider" in lowered or "not found" in lowered or "invalid model" in lowered:
+                return "model_error", f"OpenRouter error: model unavailable or invalid ({normalized or err_code_text or 'provider response'})."
+            return "invalid_request", f"OpenRouter error: invalid request ({normalized or err_code_text or 'provider response'})."
+        if status_code is not None and status_code >= 500:
+            return "provider_error", f"OpenRouter error: provider request failed ({normalized or f'status {status_code}'})."
+        if err_code_text in {"rate_limit", "quota_exceeded"}:
+            if err_code_text == "quota_exceeded":
+                return "quota", "OpenRouter error: quota or credit limit reached."
+            return "rate_limit", "OpenRouter error: rate limit reached. Please retry shortly."
+        return "backend_error", f"OpenRouter error: backend request failed ({normalized or 'unknown provider error'})."
+
     def generate(self, system: str, user: str, context: List[Dict], **kwargs: Any) -> str:
+        start_time = time.monotonic()
+        fallback_attempted = False
+        total_retries = 0
+
         try:
             if not self.api_key:
-                return "OpenRouter error: missing OPENROUTER_API_KEY."
+                message = "OpenRouter backend selected but OPENROUTER_API_KEY is missing."
+                self._set_last_call(
+                    used_model=None,
+                    fallback_triggered=False,
+                    retries=0,
+                    latency_ms=self._elapsed_ms(start_time),
+                    status="unavailable",
+                    error_type="missing_api_key",
+                    error_message=message,
+                    note="Falling back to retrieval-only behavior because no API key is configured.",
+                )
+                logger.warning("OpenRouter unavailable requested_model=%s reason=missing_api_key", self.model or "n/a")
+                return message
 
-            temperature = float(kwargs.get("temperature", 0.2))
-            max_tokens = int(kwargs.get("max_tokens", 600))
-            timeout = float(kwargs.get("timeout", 60))
+            temperature = self._temperature(**kwargs)
+            max_tokens = self._max_tokens(**kwargs)
+            timeout = self._timeout(**kwargs)
             retry_count = self._retry_count(**kwargs)
 
             context_block = self._format_context(context)
@@ -114,24 +249,25 @@ class OpenRouterLLMClient:
                 headers["X-Title"] = self.app_title
 
             model_candidates: List[str] = [self.model]
-            for m in self.fallback_models:
-                if m and m not in model_candidates:
-                    model_candidates.append(m)
+            for model_name in self.fallback_models:
+                if model_name and model_name not in model_candidates:
+                    model_candidates.append(model_name)
 
-            last_status: int | None = None
-            last_msg = ""
-            last_model = ""
-            any_retry = False
+            last_status: Optional[int] = None
+            last_message = ""
+            last_model = self.model
+            last_error_type = "backend_error"
 
             for model_index, model_name in enumerate(model_candidates):
+                if model_index > 0:
+                    fallback_attempted = True
                 last_model = model_name
-                retried_for_model = False
                 attempts_for_model = retry_count + 1
 
                 for attempt in range(attempts_for_model):
                     is_retry = attempt > 0
-                    retried_for_model = retried_for_model or is_retry
-                    any_retry = any_retry or is_retry
+                    if is_retry:
+                        total_retries += 1
 
                     payload = {
                         "model": model_name,
@@ -150,13 +286,34 @@ class OpenRouterLLMClient:
                             json=payload,
                             timeout=timeout,
                         )
-                    except requests.RequestException as exc:
+                    except requests.Timeout as exc:
                         last_status = None
-                        last_msg = str(exc)
+                        last_message = str(exc) or "request timed out"
+                        last_error_type = "timeout"
                         should_retry = attempt < retry_count
                         if should_retry:
                             logger.warning(
-                                "OpenRouter transient request failure model=%s attempt=%d/%d retrying: %s",
+                                "OpenRouter timeout model=%s attempt=%d/%d retrying",
+                                model_name,
+                                attempt + 1,
+                                attempts_for_model,
+                            )
+                            self._sleep_for_retry(attempt)
+                            continue
+                        logger.warning(
+                            "OpenRouter timeout model=%s retries_exhausted switching_model=%s",
+                            model_name,
+                            model_index < (len(model_candidates) - 1),
+                        )
+                        break
+                    except requests.RequestException as exc:
+                        last_status = None
+                        last_message = str(exc)
+                        last_error_type = "backend_error"
+                        should_retry = attempt < retry_count
+                        if should_retry:
+                            logger.warning(
+                                "OpenRouter request failure model=%s attempt=%d/%d retrying: %s",
                                 model_name,
                                 attempt + 1,
                                 attempts_for_model,
@@ -165,24 +322,24 @@ class OpenRouterLLMClient:
                             self._sleep_for_retry(attempt)
                             continue
                         logger.warning(
-                            "OpenRouter request failure model=%s retries_exhausted=%s switching_model=%s error=%s",
+                            "OpenRouter request failure model=%s retries_exhausted switching_model=%s error=%s",
                             model_name,
-                            retried_for_model,
                             model_index < (len(model_candidates) - 1),
                             exc,
                         )
                         break
 
                     response_text = resp.text or ""
-                    body_text = response_text[:200]
+                    body_text = response_text[:200].strip()
 
                     if not response_text.strip():
                         last_status = resp.status_code
-                        last_msg = "empty response body"
+                        last_message = "empty response body"
+                        last_error_type = "provider_error"
                         should_retry = attempt < retry_count
                         if should_retry:
                             logger.warning(
-                                "OpenRouter transient empty body model=%s status=%s attempt=%d/%d retrying",
+                                "OpenRouter empty body model=%s status=%s attempt=%d/%d retrying",
                                 model_name,
                                 resp.status_code,
                                 attempt + 1,
@@ -191,9 +348,8 @@ class OpenRouterLLMClient:
                             self._sleep_for_retry(attempt)
                             continue
                         logger.warning(
-                            "OpenRouter empty body model=%s retries_exhausted=%s switching_model=%s",
+                            "OpenRouter empty body model=%s retries_exhausted switching_model=%s",
                             model_name,
-                            retried_for_model,
                             model_index < (len(model_candidates) - 1),
                         )
                         break
@@ -202,139 +358,248 @@ class OpenRouterLLMClient:
                         data = resp.json()
                     except ValueError:
                         last_status = resp.status_code
-                        last_msg = "non-JSON response"
-                        # Non-JSON is not classified as transient by default.
-                        break
+                        last_message = "non-JSON response"
+                        last_error_type = "provider_error"
+                        if resp.status_code in {502, 503, 504} and attempt < retry_count:
+                            logger.warning(
+                                "OpenRouter non-JSON transient response model=%s status=%s attempt=%d/%d retrying",
+                                model_name,
+                                resp.status_code,
+                                attempt + 1,
+                                attempts_for_model,
+                            )
+                            self._sleep_for_retry(attempt)
+                            continue
+                        if resp.status_code >= 500 and model_index < (len(model_candidates) - 1):
+                            logger.warning(
+                                "OpenRouter non-JSON provider response model=%s status=%s switching to fallback model",
+                                model_name,
+                                resp.status_code,
+                            )
+                            break
+                        final_message = self._classify_error(resp.status_code, last_message)[1]
+                        self._set_last_call(
+                            used_model=model_name,
+                            fallback_triggered=fallback_attempted,
+                            retries=total_retries,
+                            latency_ms=self._elapsed_ms(start_time),
+                            status="error",
+                            error_type=last_error_type,
+                            error_message=final_message,
+                            note="OpenRouter returned a malformed non-JSON response.",
+                        )
+                        return final_message
 
                     if isinstance(data, dict) and "error" in data:
                         err = data.get("error") or {}
                         if isinstance(err, dict):
-                            err_msg = str(err.get("message", "unknown error"))
+                            err_message = str(err.get("message", "unknown error"))
                             err_code = err.get("code")
                         else:
-                            err_msg = str(err)
+                            err_message = str(err)
                             err_code = None
-                        error_line = f"OpenRouter error: {err_msg} (code={err_code})"
 
-                        if resp.status_code in (401, 403):
-                            return "OpenRouter error: unauthorized (check OPENROUTER_API_KEY and model access)."
-
-                        is_transient_error = resp.status_code in {429, 502}
+                        error_type, final_message = self._classify_error(
+                            resp.status_code,
+                            err_message,
+                            err_code=err_code,
+                        )
                         last_status = resp.status_code
-                        last_msg = err_msg
-                        should_retry = is_transient_error and attempt < retry_count
+                        last_message = err_message
+                        last_error_type = error_type
+
+                        if error_type in {"auth", "quota"}:
+                            logger.error(
+                                "OpenRouter terminal error requested_model=%s used_model=%s error_type=%s status=%s",
+                                self.model,
+                                model_name,
+                                error_type,
+                                resp.status_code,
+                            )
+                            self._set_last_call(
+                                used_model=model_name,
+                                fallback_triggered=fallback_attempted,
+                                retries=total_retries,
+                                latency_ms=self._elapsed_ms(start_time),
+                                status="error",
+                                error_type=error_type,
+                                error_message=final_message,
+                                note="OpenRouter returned a terminal authentication or quota error.",
+                            )
+                            return final_message
+
+                        is_transient = error_type in {"rate_limit", "timeout"}
+                        should_retry = is_transient and attempt < retry_count
                         if should_retry:
                             logger.warning(
-                                "OpenRouter transient provider error model=%s status=%s attempt=%d/%d retrying: %s",
+                                "OpenRouter transient error model=%s type=%s status=%s attempt=%d/%d retrying",
                                 model_name,
+                                error_type,
                                 resp.status_code,
                                 attempt + 1,
                                 attempts_for_model,
-                                err_msg,
                             )
                             self._sleep_for_retry(attempt)
                             continue
-                        if is_transient_error:
+
+                        should_switch_model = error_type in {"rate_limit", "model_error", "provider_error"} and model_index < (
+                            len(model_candidates) - 1
+                        )
+                        if should_switch_model:
                             logger.warning(
-                                "OpenRouter transient error retries exhausted model=%s status=%s switching_model=%s",
+                                "OpenRouter switching to fallback model requested_model=%s failed_model=%s error_type=%s",
+                                self.model,
                                 model_name,
-                                resp.status_code,
-                                model_index < (len(model_candidates) - 1),
+                                error_type,
                             )
                             break
-                        if model_index < (len(model_candidates) - 1):
-                            logger.warning(
-                                "OpenRouter provider error model=%s status=%s switching to fallback model: %s",
-                                model_name,
-                                resp.status_code,
-                                err_msg,
-                            )
-                            break
-                        return error_line
 
-                    if resp.status_code in (401, 403):
-                        return "OpenRouter error: unauthorized (check OPENROUTER_API_KEY and model access)."
+                        self._set_last_call(
+                            used_model=model_name,
+                            fallback_triggered=fallback_attempted,
+                            retries=total_retries,
+                            latency_ms=self._elapsed_ms(start_time),
+                            status="timeout" if error_type == "timeout" else "error",
+                            error_type=error_type,
+                            error_message=final_message,
+                            note="OpenRouter did not return a usable answer.",
+                        )
+                        return final_message
 
-                    if resp.status_code in {429, 502}:
+                    if resp.status_code in {429, 502, 503, 504}:
+                        error_type, final_message = self._classify_error(resp.status_code, body_text or f"status {resp.status_code}")
                         last_status = resp.status_code
-                        last_msg = body_text
+                        last_message = body_text or f"status {resp.status_code}"
+                        last_error_type = error_type
                         should_retry = attempt < retry_count
                         if should_retry:
                             logger.warning(
-                                "OpenRouter transient HTTP status model=%s status=%s attempt=%d/%d retrying",
+                                "OpenRouter transient HTTP status model=%s type=%s status=%s attempt=%d/%d retrying",
                                 model_name,
+                                error_type,
                                 resp.status_code,
                                 attempt + 1,
                                 attempts_for_model,
                             )
                             self._sleep_for_retry(attempt)
                             continue
-                        logger.warning(
-                            "OpenRouter transient status retries exhausted model=%s status=%s switching_model=%s",
-                            model_name,
-                            resp.status_code,
-                            model_index < (len(model_candidates) - 1),
+                        if model_index < (len(model_candidates) - 1):
+                            logger.warning(
+                                "OpenRouter transient status exhausted requested_model=%s failed_model=%s switching to fallback",
+                                self.model,
+                                model_name,
+                            )
+                            break
+                        self._set_last_call(
+                            used_model=model_name,
+                            fallback_triggered=fallback_attempted,
+                            retries=total_retries,
+                            latency_ms=self._elapsed_ms(start_time),
+                            status="error",
+                            error_type=error_type,
+                            error_message=final_message,
+                            note="OpenRouter exhausted retries on a transient HTTP response.",
                         )
-                        break
+                        return final_message
 
                     choices = data.get("choices") if isinstance(data, dict) else None
                     if not isinstance(choices, list) or not choices:
                         last_status = resp.status_code
-                        last_msg = "missing choices"
+                        last_message = "missing choices"
+                        last_error_type = "provider_error"
                         should_retry = attempt < retry_count
                         if should_retry:
                             logger.warning(
-                                "OpenRouter transient malformed response model=%s attempt=%d/%d retrying: missing choices",
+                                "OpenRouter malformed response model=%s attempt=%d/%d retrying: missing choices",
                                 model_name,
                                 attempt + 1,
                                 attempts_for_model,
                             )
                             self._sleep_for_retry(attempt)
                             continue
-                        logger.warning(
-                            "OpenRouter malformed response retries exhausted model=%s switching_model=%s",
-                            model_name,
-                            model_index < (len(model_candidates) - 1),
+                        if model_index < (len(model_candidates) - 1):
+                            logger.warning(
+                                "OpenRouter malformed response requested_model=%s failed_model=%s switching to fallback",
+                                self.model,
+                                model_name,
+                            )
+                            break
+                        final_message = "OpenRouter error: provider returned a malformed response (missing choices)."
+                        self._set_last_call(
+                            used_model=model_name,
+                            fallback_triggered=fallback_attempted,
+                            retries=total_retries,
+                            latency_ms=self._elapsed_ms(start_time),
+                            status="error",
+                            error_type=last_error_type,
+                            error_message=final_message,
+                            note="OpenRouter returned a malformed response without choices.",
                         )
-                        break
+                        return final_message
+
                     first = choices[0] if isinstance(choices[0], dict) else None
                     msg = first.get("message") if isinstance(first, dict) else None
                     content = msg.get("content") if isinstance(msg, dict) else None
                     if content is None:
                         last_status = resp.status_code
-                        last_msg = "missing content"
+                        last_message = "missing content"
+                        last_error_type = "provider_error"
                         should_retry = attempt < retry_count
                         if should_retry:
                             logger.warning(
-                                "OpenRouter transient malformed response model=%s attempt=%d/%d retrying: missing content",
+                                "OpenRouter malformed content model=%s attempt=%d/%d retrying: missing content",
                                 model_name,
                                 attempt + 1,
                                 attempts_for_model,
                             )
                             self._sleep_for_retry(attempt)
                             continue
-                        logger.warning(
-                            "OpenRouter malformed content retries exhausted model=%s switching_model=%s",
-                            model_name,
-                            model_index < (len(model_candidates) - 1),
-                        )
-                        break
-
-                    if resp.status_code != 200:
-                        # Non-transient non-200 response.
-                        last_status = resp.status_code
-                        last_msg = body_text
                         if model_index < (len(model_candidates) - 1):
                             logger.warning(
-                                "OpenRouter non-200 response model=%s status=%s switching to fallback model",
+                                "OpenRouter missing content requested_model=%s failed_model=%s switching to fallback",
+                                self.model,
+                                model_name,
+                            )
+                            break
+                        final_message = "OpenRouter error: provider returned a malformed response (missing content)."
+                        self._set_last_call(
+                            used_model=model_name,
+                            fallback_triggered=fallback_attempted,
+                            retries=total_retries,
+                            latency_ms=self._elapsed_ms(start_time),
+                            status="error",
+                            error_type=last_error_type,
+                            error_message=final_message,
+                            note="OpenRouter returned a malformed response without content.",
+                        )
+                        return final_message
+
+                    if resp.status_code != 200:
+                        error_type, final_message = self._classify_error(resp.status_code, body_text or f"status {resp.status_code}")
+                        last_status = resp.status_code
+                        last_message = body_text or f"status {resp.status_code}"
+                        last_error_type = error_type
+                        if model_index < (len(model_candidates) - 1) and error_type in {"model_error", "provider_error"}:
+                            logger.warning(
+                                "OpenRouter non-200 response requested_model=%s failed_model=%s switching to fallback status=%s",
+                                self.model,
                                 model_name,
                                 resp.status_code,
                             )
                             break
-                        return f"OpenRouter error: status={resp.status_code}, message={body_text}"
+                        self._set_last_call(
+                            used_model=model_name,
+                            fallback_triggered=fallback_attempted,
+                            retries=total_retries,
+                            latency_ms=self._elapsed_ms(start_time),
+                            status="error",
+                            error_type=error_type,
+                            error_message=final_message,
+                            note="OpenRouter returned a non-200 response with content.",
+                        )
+                        return final_message
 
                     if isinstance(content, list):
-                        # Some providers return content parts. Flatten text parts conservatively.
                         text_parts = []
                         for part in content:
                             if isinstance(part, dict) and part.get("type") == "text":
@@ -343,24 +608,62 @@ class OpenRouterLLMClient:
                     else:
                         output = str(content).strip()
 
+                    latency_ms = self._elapsed_ms(start_time)
+                    self._set_last_call(
+                        used_model=model_name,
+                        fallback_triggered=fallback_attempted,
+                        retries=total_retries,
+                        latency_ms=latency_ms,
+                        status="ok",
+                        note="OpenRouter answer generated successfully.",
+                    )
                     logger.info(
-                        "OpenRouter success model=%s used_fallback=%s retried=%s attempts=%d",
+                        "OpenRouter success model=%s requested_model=%s used_fallback=%s retried=%s retries=%d latency_ms=%d",
                         model_name,
-                        model_index > 0,
-                        retried_for_model,
-                        attempt + 1,
+                        self.model,
+                        fallback_attempted,
+                        total_retries > 0,
+                        total_retries,
+                        latency_ms,
                     )
                     return output
 
-            status_str = str(last_status) if last_status is not None else "n/a"
-            msg = (last_msg or "unknown provider error").strip()
-            logger.error(
-                "OpenRouter failed after retries and fallbacks last_model=%s last_status=%s retried=%s error=%s",
-                last_model or "n/a",
-                status_str,
-                any_retry,
-                msg,
+            error_type = last_error_type or "backend_error"
+            final_message = self._classify_error(last_status, last_message or "unknown provider error")[1]
+            latency_ms = self._elapsed_ms(start_time)
+            self._set_last_call(
+                used_model=last_model or None,
+                fallback_triggered=fallback_attempted,
+                retries=total_retries,
+                latency_ms=latency_ms,
+                status="timeout" if error_type == "timeout" else "error",
+                error_type=error_type,
+                error_message=final_message,
+                note="OpenRouter exhausted retries and fallbacks.",
             )
-            return f"OpenRouter error: status={status_str}, message={msg}"
+            logger.error(
+                "OpenRouter failed requested_model=%s last_model=%s error_type=%s last_status=%s fallback_triggered=%s retries=%d latency_ms=%d",
+                self.model,
+                last_model or "n/a",
+                error_type,
+                str(last_status) if last_status is not None else "n/a",
+                fallback_attempted,
+                total_retries,
+                latency_ms,
+            )
+            return final_message
         except Exception as exc:
-            return f"OpenRouter error: unexpected failure ({exc})"
+            message = f"OpenRouter error: unexpected failure ({exc})"
+            latency_ms = self._elapsed_ms(start_time)
+            self._set_last_call(
+                used_model=None,
+                fallback_triggered=fallback_attempted,
+                retries=total_retries,
+                latency_ms=latency_ms,
+                status="error",
+                error_type="unexpected_failure",
+                error_message=message,
+                note="Unexpected OpenRouter client failure.",
+            )
+            logger.exception("OpenRouter unexpected failure requested_model=%s", self.model)
+            return message
