@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import html
-import os
 from pathlib import Path
 import re
 import time
@@ -14,19 +13,18 @@ import streamlit as st
 
 from app.llm.client import get_llm_client
 from app.rag.answer_state import derive_answer_view_state
+from app.runtime import (
+    BM25_DIR,
+    CHUNKS_PATH,
+    QDRANT_COLLECTION,
+    QDRANT_STATUS_ENABLED,
+    UPLOAD_MD_DIR,
+    UPLOAD_PDF_DIR,
+    create_qdrant_client,
+)
 
-REPO_ROOT = Path(__file__).resolve().parent
-DATA_DIR = REPO_ROOT / "data"
-UPLOAD_PDF_DIR = DATA_DIR / "uploads_pdf"
-UPLOAD_MD_DIR = DATA_DIR / "uploads_md"
-INDEX_DIR = DATA_DIR / "index"
-CHUNKS_PATH = INDEX_DIR / "chunks.parquet"
-BM25_DIR = DATA_DIR / "bm25_index"
-QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
-QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
-QDRANT_TIMEOUT = float(os.getenv("QDRANT_TIMEOUT", "0.75"))
-QDRANT_STATUS_ENABLED = os.getenv("QDRANT_STATUS_ENABLED", "0").strip().lower() not in {"0", "false", "no"}
-DEFAULT_COLLECTION = os.getenv("QDRANT_COLLECTION", "rmf_chunks")
+INDEX_DIR = CHUNKS_PATH.parent
+DEFAULT_COLLECTION = QDRANT_COLLECTION
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
 CHUNK_ID_NAMESPACE = uuid.UUID("49b7b7f2-1291-4ed5-a4b6-b68de66f7b8e")
@@ -140,13 +138,12 @@ def _upsert_chunks_to_qdrant(chunks_df: pd.DataFrame) -> int:
     if chunks_df.empty:
         return 0
     # Lazy imports reduce first-render startup work for the Streamlit app.
-    from qdrant_client import QdrantClient
     from qdrant_client.models import PointStruct
 
     from app.index.qdrant_schema import ensure_collection
     from app.utils.embeddings import embed_texts
 
-    client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=QDRANT_TIMEOUT)
+    client = create_qdrant_client()
     probe = embed_texts([chunks_df.iloc[0]["chunk_text"]])
     vector_size = int(probe.shape[1])
     ensure_collection(client, DEFAULT_COLLECTION, vector_size)
@@ -213,9 +210,7 @@ def _status_snapshot() -> Dict[str, int]:
     qdrant_points = 0
     if QDRANT_STATUS_ENABLED:
         try:
-            from qdrant_client import QdrantClient
-
-            client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=QDRANT_TIMEOUT)
+            client = create_qdrant_client()
             info = client.get_collection(DEFAULT_COLLECTION)
             qdrant_points = int(getattr(info, "points_count", 0) or 0)
         except Exception:

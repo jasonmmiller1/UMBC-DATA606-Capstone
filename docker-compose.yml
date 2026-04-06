@@ -5,4 +5,60 @@ services:
     ports:
       - "6333:6333"
     volumes:
-      - ./data/qdrant_storage:/qdrant/storage
+      - qdrant_storage:/qdrant/storage
+
+  qdrant-bootstrap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rmf-assistant:local
+    restart: "no"
+    depends_on:
+      - qdrant
+    environment:
+      APP_ENV: local
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-rmf_chunks}
+      CHUNKS_PATH: /app/data/index/chunks.parquet
+      BM25_INDEX_PATH: /app/data/bm25_index/bm25_index.pkl
+    command: ["python", "scripts/bootstrap_demo_data.py", "--force", "--seed-qdrant", "--wait-timeout-seconds", "120"]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rmf-assistant:local
+    restart: unless-stopped
+    depends_on:
+      - qdrant
+      - qdrant-bootstrap
+    ports:
+      - "${APP_PORT:-8501}:8501"
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      PORT: 8501
+      LLM_BACKEND: ${LLM_BACKEND:-none}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_FALLBACK_MODELS: ${OPENROUTER_FALLBACK_MODELS:-}
+      OPENROUTER_TIMEOUT_SECONDS: ${OPENROUTER_TIMEOUT_SECONDS:-60}
+      OPENROUTER_MAX_TOKENS: ${OPENROUTER_MAX_TOKENS:-600}
+      OPENROUTER_TEMPERATURE: ${OPENROUTER_TEMPERATURE:-0.2}
+      OPENROUTER_RETRY_COUNT: ${OPENROUTER_RETRY_COUNT:-2}
+      OPENROUTER_APP_TITLE: ${OPENROUTER_APP_TITLE:-RMF Assistant}
+      OPENROUTER_APP_URL: ${OPENROUTER_APP_URL:-http://localhost:8501}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-rmf_chunks}
+      QDRANT_TIMEOUT: ${QDRANT_TIMEOUT:-0.75}
+      QDRANT_STATUS_ENABLED: ${QDRANT_STATUS_ENABLED:-0}
+      PREPARE_LOCAL_INDEXES_ON_START: ${PREPARE_LOCAL_INDEXES_ON_START:-1}
+      WAIT_FOR_QDRANT_ON_START: ${WAIT_FOR_QDRANT_ON_START:-1}
+      REQUIRE_QDRANT_COLLECTION: ${REQUIRE_QDRANT_COLLECTION:-1}
+      STARTUP_QDRANT_TIMEOUT_SECONDS: ${STARTUP_QDRANT_TIMEOUT_SECONDS:-120}
+      CHUNKS_PATH: /app/data/index/chunks.parquet
+      BM25_INDEX_PATH: /app/data/bm25_index/bm25_index.pkl
+
+volumes:
+  qdrant_storage:

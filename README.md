@@ -88,7 +88,24 @@ pip install -r requirements.txt
 `environment.yml` was exported from a working Linux `aarch64` environment and pins `python=3.10.19`. For the most portable restore path on a fresh machine, prefer the `requirements.txt` + `.venv` flow above.
 
 ### 1.5) Current developer bring-up
-This is the workflow validated in this repository on **March 16, 2026**:
+This is the quickest local container path for a reproducible demo:
+
+```bash
+docker compose up --build
+```
+
+What that does:
+- builds the app image
+- starts Qdrant locally
+- seeds the `rmf_chunks` collection with the committed demo corpus
+- starts the Streamlit app on `http://localhost:8501`
+
+Deployment-oriented notes:
+- The app image rebuilds local chunk/BM25 artifacts on startup from committed source data.
+- Qdrant remains a separate service dependency and is not embedded into the app container.
+- Uploaded files remain local to the running container unless you add external storage later.
+
+Host-Python bring-up is still available for development. This was the workflow validated in this repository on **March 16, 2026**:
 
 ```bash
 python -m venv .venv
@@ -98,7 +115,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 docker compose up -d
-./scripts/index_offline.sh
+python scripts/bootstrap_demo_data.py --force --seed-qdrant
 python -m app.retrieval.run_week2_tests
 
 LLM_BACKEND=none python scripts/run_week5_eval.py \
@@ -111,9 +128,11 @@ python -m streamlit run app.py
 ```
 
 Notes:
-- The repo already includes parsed OSCAL data, the synthetic policy corpus, and local BM25/chunk artifacts, so you do **not** need the raw OSCAL clone for normal local bring-up.
-- `docker compose up -d` starts Qdrant, but the live `rmf_chunks` collection still needs `./scripts/index_offline.sh` to populate it.
+- The repo already includes parsed OSCAL data and the synthetic policy corpus, and the local BM25/chunk artifacts can now be rebuilt from that committed source data, so you do **not** need the raw OSCAL clone for normal local bring-up.
+- `docker compose up --build` is now the preferred containerized demo path.
+- For host-Python runs, use `python scripts/bootstrap_demo_data.py --force --seed-qdrant` to populate the live `rmf_chunks` collection.
 - `LLM_BACKEND=none` is the safest first-run mode. Switch to `openrouter` only after adding a real `OPENROUTER_API_KEY` and model to `.env`.
+- DigitalOcean deployment guidance lives in [`docs/deployment_digitalocean.md`](docs/deployment_digitalocean.md).
 
 ### 1.6) LLM mode switching
 
@@ -197,19 +216,16 @@ Modules:
 
 Quick run:
 ```bash
-# 1) Start vector DB
-docker compose up -d
+# 1) Start local Qdrant
+docker compose up -d qdrant
 
-# 2) Build chunks + index into Qdrant (offline model cache mode)
-./scripts/index_offline.sh
+# 2) Build chunks + BM25 and index into Qdrant
+python scripts/bootstrap_demo_data.py --force --seed-qdrant
 
-# 3) Build local BM25 index
-python -m app.index.bm25_index --build
-
-# 4) Test hybrid retrieval
+# 3) Test hybrid retrieval
 python -m app.retrieval.retrieve "account management requirements"
 
-# 5) Run week 2 query set and save reproducible outputs
+# 4) Run week 2 query set and save reproducible outputs
 python -m app.retrieval.run_week2_tests
 ```
 
