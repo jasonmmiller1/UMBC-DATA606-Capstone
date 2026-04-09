@@ -1,49 +1,20 @@
 from __future__ import annotations
 
 import inspect
-import os
 from functools import lru_cache
-from pathlib import Path
 from typing import Any, Dict
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+from app.runtime import BM25_INDEX_PATH, CHUNKS_PATH, create_qdrant_client
 
 
 @lru_cache(maxsize=1)
 def get_qdrant_client():
-    try:
-        from qdrant_client import QdrantClient
-    except ModuleNotFoundError as exc:
-        raise RuntimeError(
-            "qdrant_client dependency is missing. Install requirements and retry."
-        ) from exc
-
-    host = os.getenv("QDRANT_HOST", "localhost").strip() or "localhost"
-    port_raw = os.getenv("QDRANT_PORT", "6333").strip() or "6333"
-    try:
-        port = int(port_raw)
-    except ValueError as exc:
-        raise RuntimeError(f"Invalid QDRANT_PORT value: {port_raw}") from exc
-    return QdrantClient(host=host, port=port)
+    return create_qdrant_client()
 
 
-def get_index_paths() -> tuple[Path, Path]:
-    bm25_env = os.getenv("BM25_INDEX_PATH", "").strip()
-    chunks_env = os.getenv("CHUNKS_PATH", "").strip()
-    if not bm25_env or not chunks_env:
-        raise RuntimeError(
-            "Missing index env vars. Set BM25_INDEX_PATH and CHUNKS_PATH before retrieval."
-        )
-
-    repo_root = _repo_root()
-    bm25_path = Path(bm25_env)
-    chunks_path = Path(chunks_env)
-    if not bm25_path.is_absolute():
-        bm25_path = repo_root / bm25_path
-    if not chunks_path.is_absolute():
-        chunks_path = repo_root / chunks_path
-
+def get_index_paths():
+    bm25_path = BM25_INDEX_PATH
+    chunks_path = CHUNKS_PATH
     if not bm25_path.exists():
         raise RuntimeError(f"BM25 index file not found: {bm25_path}")
     if not chunks_path.exists():

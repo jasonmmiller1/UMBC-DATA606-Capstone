@@ -1,0 +1,6 @@
+{"id":"demo_q01","question":"What does our access control policy say about least privilege?","demo_goal":"Strong policy answer with direct citations."}
+{"id":"demo_q02","question":"Does our access control policy define how often access recertification must occur?","demo_goal":"Intentional policy gap that should be hedged or answered cautiously."}
+{"id":"demo_q03","question":"Summarize the requirement in AC-2.","demo_goal":"Framework-only answer with grounded control evidence."}
+{"id":"demo_q04","question":"How well do our policies cover PL-2 based on the mini SSP?","mode":"policy_vs_control","intent":"coverage_assessment","demo_goal":"Policy-versus-control comparison that should preserve disciplined coverage labeling."}
+{"id":"demo_q05","question":"Where is privileged session recording mandated in our PAM standard?","mode":"out_of_scope_policy","intent":"abstain_missing_policy_evidence","expected":{"expected_coverage":"abstain"},"demo_goal":"Out-of-scope policy question that should abstain cleanly."}
+{"id":"demo_q06","question":"What does our incident response plan say about escalation?","demo_goal":"Policy answer where the LLM may improve phrasing but must stay grounded."}

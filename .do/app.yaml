@@ -1,0 +1,61 @@
+name: rmf-assistant-demo
+region: nyc
+
+services:
+  - name: rmf-assistant-web
+    github:
+      repo: your-org/UMBC-DATA606-Capstone
+      branch: feat/week7-demo-hardening
+      deploy_on_push: false
+    source_dir: /
+    dockerfile_path: Dockerfile
+    http_port: 8501
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+    health_check:
+      initial_delay_seconds: 60
+      period_seconds: 15
+      timeout_seconds: 5
+      failure_threshold: 6
+    envs:
+      - key: APP_ENV
+        value: production
+        scope: RUN_TIME
+        type: general
+      - key: PORT
+        value: "8501"
+        scope: RUN_TIME
+        type: general
+      - key: LLM_BACKEND
+        value: none
+        scope: RUN_TIME
+        type: general
+      - key: PREPARE_LOCAL_INDEXES_ON_START
+        value: "1"
+        scope: RUN_TIME
+        type: general
+      - key: WAIT_FOR_QDRANT_ON_START
+        value: "1"
+        scope: RUN_TIME
+        type: general
+      - key: REQUIRE_QDRANT_COLLECTION
+        value: "1"
+        scope: RUN_TIME
+        type: general
+      - key: STARTUP_QDRANT_TIMEOUT_SECONDS
+        value: "180"
+        scope: RUN_TIME
+        type: general
+      - key: QDRANT_URL
+        value: http://replace-with-your-qdrant-host:6333
+        scope: RUN_TIME
+        type: general
+      - key: QDRANT_COLLECTION
+        value: rmf_chunks
+        scope: RUN_TIME
+        type: general
+
+# Qdrant should run on a separate persistent service such as a Droplet + Block Storage
+# or Qdrant Cloud. Do not store Qdrant data on the App Platform filesystem.
+# Add secrets such as QDRANT_API_KEY and OPENROUTER_API_KEY in the App Platform UI
+# or encrypt them before submitting an updated app spec.

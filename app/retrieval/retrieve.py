@@ -63,7 +63,6 @@ RERANKER_STOPWORDS = {
     "is",
     "are",
 }
-PRODUCTION_ENV_VALUES = {"prod", "production"}
 DEFAULT_RERANK_INTENTS = {"policy"}
 DEFAULT_TOP_K = 10
 DEFAULT_DENSE_K = 20
@@ -211,10 +210,6 @@ def _normalize_intent(value: Optional[str]) -> str:
 
 
 def _rerank_enabled_default() -> bool:
-    for env_name in ("APP_ENV", "ENVIRONMENT", "ENV", "RUNTIME_ENV"):
-        value = _normalize_intent(os.getenv(env_name, ""))
-        if value in PRODUCTION_ENV_VALUES:
-            return False
     return True
 
 

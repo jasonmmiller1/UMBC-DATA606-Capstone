@@ -48,6 +48,7 @@ MIXED_QUERY_HINTS = [
     "coverage",
 ]
 VALID_COVERAGE_LABELS = {"covered", "partial", "missing", "unknown"}
+TIMEOUT_TERMS = ("timeout", "timed out", "deadline exceeded", "read timed out", "connect timeout")
 
 POLICY_DOC_HINT_RULES: List[Tuple[Sequence[str], str, Sequence[str]]] = [
     (
@@ -165,6 +166,7 @@ def _to_retrieved_chunks(results: List[Dict]) -> List[Dict]:
                 "control_id": payload.get("control_id"),
                 "doc_id": payload.get("doc_id"),
                 "doc_title": payload.get("doc_title"),
+                "source_file": payload.get("source_file"),
                 "section_path": payload.get("section_path"),
                 "heading": payload.get("heading"),
                 "chunk_type": payload.get("chunk_type"),
@@ -241,6 +243,31 @@ def _context_block(retrieved_chunks: List[Dict], max_chunks: int = 8) -> str:
 
 def _is_insufficient_message(text: str) -> bool:
     return "insufficient evidence" in (text or "").lower()
+
+
+def _is_timeout_text(text: str) -> bool:
+    lowered = (text or "").lower()
+    return any(term in lowered for term in TIMEOUT_TERMS)
+
+
+def _exception_error_type(exc: Exception) -> str:
+    if isinstance(exc, TimeoutError) or _is_timeout_text(str(exc)):
+        return "timeout"
+    return "error"
+
+
+def _llm_status_from_text(text: str) -> tuple[str, Optional[str]]:
+    if text.startswith("LLM not configured") or text.startswith("OpenRouter backend selected"):
+        return "unavailable", "configuration"
+    if text.startswith("OpenRouter error:") or text.startswith("LLM error:"):
+        return ("timeout", "timeout") if _is_timeout_text(text) else ("error", "backend")
+    return "ok", None
+
+
+def _coerce_llm_call_metadata(raw: object) -> Dict[str, object]:
+    if isinstance(raw, dict):
+        return dict(raw)
+    return {}
 
 
 def _extract_first_line_coverage_label(text: str) -> Optional[str]:
@@ -689,6 +716,20 @@ def answer_question(
         "predicted_coverage": None,
         "citations": [],
         "retrieved_chunks": [],
+        "query_mode": "unknown",
+        "weak_retrieval": True,
+        "retrieval_status": "not_started",
+        "retrieval_error_type": None,
+        "llm_status": "not_requested",
+        "llm_error_type": None,
+        "llm_backend": "unknown",
+        "llm_mode": "unknown",
+        "llm_requested_model": None,
+        "llm_used_model": None,
+        "llm_fallback_triggered": False,
+        "llm_retries": 0,
+        "llm_latency_ms": None,
+        "llm_error_message": None,
     }
     if debug_policy_vs_control:
         base["debug"] = {
@@ -702,6 +743,7 @@ def answer_question(
     inferred_control_id = base_control_id
     is_control_query = base_control_id is not None
     query_mode = _classify_query_mode(query, has_control_id=is_control_query)
+    base["query_mode"] = query_mode
     policy_specific = query_mode == "policy"
     framework_query = query_mode == "framework"
     mixed_query = query_mode == "policy_vs_control"
@@ -769,11 +811,29 @@ def answer_question(
                 "predicted_coverage": None,
                 "citations": citations,
                 "retrieved_chunks": retrieved_chunks,
+                "retrieval_status": "no_evidence",
+                "llm_status": "skipped",
             }
         )
         return base
 
     llm_client = get_llm_client()
+    llm_backend_info = _coerce_llm_call_metadata(
+        llm_client.describe_backend() if hasattr(llm_client, "describe_backend") else {}
+    )
+    if llm_backend_info:
+        base.update(
+            {
+                "llm_backend": llm_backend_info.get("backend") or base["llm_backend"],
+                "llm_mode": llm_backend_info.get("mode") or base["llm_mode"],
+                "llm_requested_model": llm_backend_info.get("requested_model"),
+                "llm_used_model": llm_backend_info.get("used_model"),
+                "llm_fallback_triggered": bool(llm_backend_info.get("fallback_triggered", False)),
+                "llm_retries": int(llm_backend_info.get("retries") or 0),
+                "llm_latency_ms": llm_backend_info.get("latency_ms"),
+                "llm_error_message": llm_backend_info.get("error_message"),
+            }
+        )
 
     try:
         if mixed_query:
@@ -812,6 +872,8 @@ def answer_question(
         elif policy_specific:
             if not chunks_path.exists() or not bm25_path.exists():
                 base["draft_answer"] = policy_missing_msg
+                base["retrieval_status"] = "missing_assets"
+                base["llm_status"] = "skipped"
                 return base
 
             policy_results = hybrid_search(
@@ -849,15 +911,22 @@ def answer_question(
         else:
             if not chunks_path.exists() or not bm25_path.exists():
                 base["draft_answer"] = "insufficient evidence. Retrieval assets are missing."
+                base["retrieval_status"] = "missing_assets"
+                base["llm_status"] = "skipped"
                 return base
             raw_results = hybrid_search(query, top_k=top_k, intent=query_mode)
     except RuntimeError as exc:
+        error_type = _exception_error_type(exc)
+        base["retrieval_status"] = error_type
+        base["retrieval_error_type"] = error_type
+        base["llm_status"] = "skipped"
         msg = str(exc)
         if "BM25_INDEX_PATH" in msg or "CHUNKS_PATH" in msg:
             if policy_specific or out_of_scope_policy_mode:
                 base["draft_answer"] = policy_missing_msg
                 base["abstained"] = True
                 base["confidence"] = 0.1
+                base["retrieval_status"] = "missing_assets"
                 return base
             base["draft_answer"] = (
                 "insufficient evidence. Retrieval index paths are not configured. "
@@ -894,6 +963,10 @@ def answer_question(
             )
         return base
     except Exception as exc:
+        error_type = _exception_error_type(exc)
+        base["retrieval_status"] = error_type
+        base["retrieval_error_type"] = error_type
+        base["llm_status"] = "skipped"
         if policy_specific or out_of_scope_policy_mode:
             base["draft_answer"] = policy_missing_msg
             base["abstained"] = True
@@ -914,6 +987,7 @@ def answer_question(
         return base
 
     results = _dedupe_by_chunk_id(raw_results)
+    base["retrieval_status"] = "ok" if results else "no_evidence"
     if policy_specific:
         results = [
             r
@@ -1005,6 +1079,7 @@ def answer_question(
         return base
 
     confidence = _confidence(unique_count, top_score)
+    base["weak_retrieval"] = weak_retrieval
     llm_context = _cap_llm_context(retrieved_chunks)
     final_context_k = _max_llm_context_chunks()
     user_prompt = (
@@ -1022,8 +1097,32 @@ def answer_question(
     except Exception as exc:
         llm_text = f"OpenRouter error: {exc}"
 
-    llm_unavailable = llm_text.startswith("LLM not configured") or llm_text.startswith("OpenRouter backend selected")
-    llm_error = llm_text.startswith("OpenRouter error:") or llm_text.startswith("LLM error:")
+    llm_call_meta = _coerce_llm_call_metadata(
+        llm_client.last_call_metadata() if hasattr(llm_client, "last_call_metadata") else {}
+    )
+    call_status = str(llm_call_meta.get("status", "") or "").strip().lower()
+    call_error_type = str(llm_call_meta.get("error_type", "") or "").strip().lower() or None
+    if call_status in {"ok", "unavailable", "timeout", "error"}:
+        llm_status = call_status
+        llm_error_type = call_error_type
+    else:
+        llm_status, llm_error_type = _llm_status_from_text(llm_text)
+    base["llm_status"] = llm_status
+    base["llm_error_type"] = llm_error_type
+    base["llm_backend"] = llm_call_meta.get("backend") or base["llm_backend"]
+    base["llm_mode"] = llm_call_meta.get("mode") or base["llm_mode"]
+    base["llm_requested_model"] = llm_call_meta.get("requested_model") or base["llm_requested_model"]
+    base["llm_used_model"] = llm_call_meta.get("used_model") or base["llm_used_model"]
+    base["llm_fallback_triggered"] = bool(
+        llm_call_meta.get("fallback_triggered", base["llm_fallback_triggered"])
+    )
+    base["llm_retries"] = int(llm_call_meta.get("retries") or base["llm_retries"] or 0)
+    base["llm_latency_ms"] = llm_call_meta.get("latency_ms", base["llm_latency_ms"])
+    base["llm_error_message"] = llm_call_meta.get("error_message") or (
+        llm_text if llm_status in {"unavailable", "timeout", "error"} else None
+    )
+    llm_unavailable = llm_status == "unavailable"
+    llm_error = llm_status in {"error", "timeout"}
     predicted_coverage: Optional[str] = None
     if llm_unavailable:
         # Retrieval-only mode keeps UI useful before an LLM is configured.
@@ -1099,6 +1198,7 @@ def answer_question(
             "predicted_coverage": predicted_coverage,
             "citations": citations,
             "retrieved_chunks": retrieved_chunks,
+            "weak_retrieval": weak_retrieval,
         }
     )
     # Safety guard: never report non-abstained when no evidence chunks exist.
@@ -1107,4 +1207,6 @@ def answer_question(
         if "insufficient evidence" not in base["draft_answer"].lower():
             base["draft_answer"] = "insufficient evidence. No retrieved evidence chunks were found."
         base["confidence"] = min(float(base["confidence"]), 0.1)
+        if base["retrieval_status"] == "ok":
+            base["retrieval_status"] = "no_evidence"
     return base

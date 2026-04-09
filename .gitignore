@@ -90,6 +90,11 @@ data/**/.cache/
 logs/
 **/logs/
 
+# ---- Local deployment / container leftovers ----
+docker-compose.override.yml
+.do/*.local.yaml
+.do/*.rendered.yaml
+
 # =========================
 # Models / weights (too large; provide download instructions)
 # =========================
@@ -111,6 +116,10 @@ checkpoints/
 data/**/*.pdf
 !data/policies_synth_pdf/**/*.pdf
 
+# Runtime uploads should never be committed
+data/uploads_md/
+data/uploads_pdf/
+
 # Large standards PDFs (keep local)
 data/standards_raw/**/*.pdf
 
@@ -121,6 +130,10 @@ data/**/*.parquet
 
 # Allow other small parsed OSCAL artifacts (jsonl) to be committed
 !data/oscal_parsed/*.jsonl
+
+# Local demo/eval outputs
+data/eval/demo_mode_comparison.json
+data/eval/demo_mode_comparison.md
 
 # (Optional) if you store any other small “must-keep” parquets later, whitelist them here:
 # !data/oscal_parsed/*.parquet
