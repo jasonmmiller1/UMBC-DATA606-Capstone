@@ -23,6 +23,7 @@ Not claimed as already validated here:
 - Python 3.10 with project dependencies installed in `.venv`, or Docker with Compose
 - a reachable Qdrant instance
 - the demo corpus seeded into Qdrant
+- for a remote demo, Qdrant should run on a separate persistent host such as a DigitalOcean Droplet + Block Storage or Qdrant Cloud
 - `.env` created from [`.env.example`](../.env.example) for local runs
 - optional: a valid `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` for LLM-backed runs
 
@@ -55,7 +56,9 @@ Useful startup controls:
 
 - `.env` is present and contains the intended demo values
 - Qdrant is reachable
+- `curl -fsS "$QDRANT_URL/readyz" -H "api-key: $QDRANT_API_KEY"` succeeds when using a remote Qdrant with API key
 - Qdrant is seeded into `QDRANT_COLLECTION`
+- the `QDRANT_COLLECTION` exists on that same Qdrant endpoint
 - the app healthcheck passes for the containerized path you plan to show
 - the app home page loads
 - one retrieval-only smoke question succeeds
@@ -154,6 +157,13 @@ Container healthcheck script:
 docker run --rm --entrypoint python rmf-assistant:test scripts/container_healthcheck.py
 ```
 
+Remote Qdrant collection check:
+
+```bash
+curl -fsS "$QDRANT_URL/collections/$QDRANT_COLLECTION/exists" \
+  -H "api-key: $QDRANT_API_KEY"
+```
+
 App smoke check in browser:
 
 - load `http://localhost:8501`
@@ -203,6 +213,7 @@ If OpenRouter is unstable during the demo:
 Symptom: app loads but answers fail immediately
 
 - verify Qdrant is reachable
+- verify the remote Qdrant host is the separate persistent service you intended, not an ephemeral app container filesystem
 - rerun `python scripts/bootstrap_demo_data.py --force --seed-qdrant --wait-timeout-seconds 120`
 
 Symptom: local retrieval smoke test returns no useful chunks
@@ -229,6 +240,6 @@ Symptom: container starts slowly
 ## Current known gaps / assumptions
 
 - Retrieval-vs-LLM comparison is not fully validated unless the current environment can run both retrieval-only and OpenRouter paths without backend-visible failures.
-- Qdrant hosting choice for the remote demo is still pending if you have not already decided between a managed/external Qdrant service and a separately hosted Qdrant instance.
+- The primary documented remote path is App Platform for the app plus a separate persistent Qdrant host. Qdrant Cloud remains a valid secondary option, but is not claimed as already validated in this branch.
 - Uploaded files are ephemeral on DigitalOcean App Platform unless external storage is added.
 - The current Streamlit upload/ingest flow can show raw exception text, which is a demo-risk UI issue for live uploads.
