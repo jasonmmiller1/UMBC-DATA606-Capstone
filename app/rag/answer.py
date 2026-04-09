@@ -166,6 +166,7 @@ def _to_retrieved_chunks(results: List[Dict]) -> List[Dict]:
                 "control_id": payload.get("control_id"),
                 "doc_id": payload.get("doc_id"),
                 "doc_title": payload.get("doc_title"),
+                "source_file": payload.get("source_file"),
                 "section_path": payload.get("section_path"),
                 "heading": payload.get("heading"),
                 "chunk_type": payload.get("chunk_type"),

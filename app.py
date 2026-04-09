@@ -13,6 +13,7 @@ import streamlit as st
 
 from app.llm.client import get_llm_client
 from app.rag.answer_state import derive_answer_view_state
+from app.source_view import is_policy_chunk, resolve_policy_source_view
 from app.runtime import (
     BM25_DIR,
     CHUNKS_PATH,
@@ -95,6 +96,7 @@ def _uploaded_to_chunks_df(uploaded_files) -> tuple[pd.DataFrame, int]:
         raw = uploaded.getbuffer()
         doc_id = Path(uploaded.name).stem.lower().replace(" ", "_")
         suffix = Path(uploaded.name).suffix.lower()
+        source_type = "policy_pdf" if suffix == ".pdf" else "policy_md"
 
         if suffix == ".pdf":
             pdf_path = UPLOAD_PDF_DIR / uploaded.name
@@ -117,13 +119,14 @@ def _uploaded_to_chunks_df(uploaded_files) -> tuple[pd.DataFrame, int]:
                 {
                     "chunk_id": _stable_chunk_id(doc_id, idx, section_path, chunk_text),
                     "chunk_text": chunk_text,
-                    "source_type": "policy_pdf",
+                    "source_type": source_type,
                     "control_id": None,
                     "control_part": None,
                     "enhancement_id": None,
                     "control_family": None,
                     "doc_id": doc_id,
                     "doc_title": doc_title,
+                    "source_file": str(md_path),
                     "section_path": section_path,
                     "page_start": None,
                     "page_end": None,
@@ -379,9 +382,37 @@ def _render_retrieved_evidence(chunks: List[Dict[str, Any]]) -> None:
         )
         text = str(chunk.get("chunk_text", "")).replace("\n", " ").strip()
         preview = text[:500] + ("..." if len(text) > 500 else "")
+        source_view = resolve_policy_source_view(chunk) if is_policy_chunk(chunk) else None
         st.markdown(f"**{chunk_label} - {title}**")
         st.caption(_chunk_meta(chunk))
+        if source_view is not None and source_view.source_path is not None:
+            st.caption(f"Source document path: `{source_view.source_path}`")
+            if source_view.source_path.is_absolute():
+                try:
+                    st.link_button(
+                        "Open local source file",
+                        source_view.source_path.as_uri(),
+                    )
+                except ValueError:
+                    pass
         st.code(preview or "(empty)")
+        if source_view is not None:
+            expander_label = f"View full policy source for {source_view.doc_label}"
+            with st.expander(expander_label, expanded=False):
+                st.markdown(f"**Source document:** {source_view.doc_label}")
+                if source_view.source_path is not None:
+                    st.caption(f"Resolved source: `{source_view.source_path}`")
+                if source_view.matched_section_text:
+                    matched_label = source_view.matched_section_label or chunk.get("section_path") or "Matched section"
+                    st.markdown(f"**Matched section:** `{matched_label}`")
+                    st.markdown(source_view.matched_section_text)
+                if source_view.full_text:
+                    st.markdown("**Full policy text**")
+                    st.markdown(source_view.full_text)
+                elif source_view.source_kind == "pdf":
+                    st.info("Inline full-text view is unavailable for this source. Use the local PDF path or link above.")
+                else:
+                    st.info("No local source text was resolved for this policy result.")
 
 
 def _render_assistant_message(message: Mapping[str, Any]) -> None:
