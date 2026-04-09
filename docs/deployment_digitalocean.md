@@ -1,128 +1,170 @@
-# DigitalOcean Demo Deployment
+# DigitalOcean Deployment
 
-This repo now supports a deployment-oriented container flow for a controlled demo. The app container is responsible for serving Streamlit and building its local BM25/chunk artifacts at startup. Qdrant is treated as a separate dependency that must already be reachable and seeded before the web service is considered ready.
+Current deployment notes for Week 7 as of April 9, 2026.
+
+This document describes the deployment path that the repo is prepared for today. It does not claim that a full App Platform deployment has already been executed and signed off on in this branch.
 
 ## Recommended deployment shape
 
-- Deploy the Streamlit app as a single DigitalOcean App Platform web service built from [`Dockerfile`](../Dockerfile).
-- Keep Qdrant outside the app container.
-- Seed Qdrant with the demo corpus before exposing the app.
+- deploy the app as one App Platform web service built from [`Dockerfile`](../Dockerfile)
+- keep Qdrant outside the app container
+- seed Qdrant before putting the app in front of demo users
 
-Why this split:
+Why this shape:
 
-- App Platform web-service filesystem is ephemeral, so Qdrant storage should not live inside the app container.
-- The repo includes the source corpus needed to rebuild `chunks.parquet` and the BM25 index on container start.
-- The vector collection should live in a durable service and survive app restarts/redeploys.
+- App Platform service storage is ephemeral
+- the app container can rebuild its local BM25/chunk artifacts from committed source data
+- Qdrant data should survive app restarts and redeploys
 
-## Runtime assumptions
+## Prerequisites
 
-The container image includes:
-
-- app code under `app/`
-- Streamlit entrypoint [`app.py`](../app.py)
-- committed source data:
-  - [`data/oscal_parsed/controls_80053.parquet`](../data/oscal_parsed/controls_80053.parquet)
-  - synthetic markdown corpus under [`data/policies_synth_md_v2`](../data/policies_synth_md_v2)
-
-The container does not include:
-
-- `.env`
-- local Qdrant storage
-- uploaded files from prior runs
-- raw standards PDFs or the raw OSCAL clone
-- a pre-seeded Qdrant collection
-
-At startup, [`scripts/start_container.py`](../scripts/start_container.py):
-
-1. builds `data/index/chunks.parquet` if missing
-2. builds `data/bm25_index/bm25_index.pkl` if missing
-3. waits for Qdrant reachability, and by default waits for the configured collection to exist
-4. starts Streamlit on `0.0.0.0:$PORT`
+- a reachable Qdrant endpoint
+- a decided `QDRANT_COLLECTION` name, currently `rmf_chunks`
+- a plan for how Qdrant will be hosted for the demo
+- optional OpenRouter credentials if LLM mode will be shown
+- a prepared App Platform spec based on [`.do/app.yaml`](../.do/app.yaml)
 
 ## Required environment variables
 
-Required for all container deployments:
-
-- `QDRANT_URL` or `QDRANT_HOST` + `QDRANT_PORT`
-- `QDRANT_COLLECTION`
-
-Required only when using a secured Qdrant endpoint:
-
-- `QDRANT_API_KEY`
-
-Required only when enabling LLM responses:
-
-- `LLM_BACKEND=openrouter`
-- `OPENROUTER_MODEL`
-- `OPENROUTER_API_KEY`
-
-Recommended runtime values for the demo:
+Required:
 
 - `APP_ENV=production`
 - `PORT=8501`
+- `QDRANT_COLLECTION=rmf_chunks`
+- either `QDRANT_URL` or `QDRANT_HOST` plus `QDRANT_PORT`
 - `PREPARE_LOCAL_INDEXES_ON_START=1`
 - `WAIT_FOR_QDRANT_ON_START=1`
 - `REQUIRE_QDRANT_COLLECTION=1`
 - `STARTUP_QDRANT_TIMEOUT_SECONDS=180`
 
+Optional but expected when needed:
+
+- `QDRANT_API_KEY`
+- `LLM_BACKEND=openrouter`
+- `OPENROUTER_MODEL`
+- `OPENROUTER_API_KEY`
+
+## What the image assumes
+
+Included in the image:
+
+- application code
+- Streamlit app entrypoint
+- committed OSCAL parquet
+- committed synthetic markdown corpus
+
+Not included in the image:
+
+- `.env`
+- any prior uploaded files
+- local Qdrant storage
+- a pre-seeded Qdrant collection
+- raw standards PDFs or the raw OSCAL clone
+
+At startup the app container:
+
+1. rebuilds `data/index/chunks.parquet` if needed
+2. rebuilds `data/bm25_index/bm25_index.pkl` if needed
+3. waits for Qdrant, and by default waits for the configured collection
+4. starts Streamlit on `0.0.0.0:$PORT`
+
+## Deployment path
+
+1. Choose where Qdrant will live.
+2. Make the Qdrant endpoint reachable from App Platform.
+3. Seed the demo corpus into Qdrant.
+4. Create the App Platform service from [`.do/app.yaml`](../.do/app.yaml) or equivalent UI settings.
+5. Add runtime env vars and secrets in DigitalOcean.
+6. Deploy the app service.
+7. Run smoke checks against the external endpoint.
+
 ## Seeding Qdrant
 
-Use the same image to seed the demo corpus into Qdrant:
+Use the same container image or a local Python environment to seed the demo corpus:
 
 ```bash
 python scripts/bootstrap_demo_data.py --force --seed-qdrant --wait-timeout-seconds 180
 ```
 
-That command:
+Expected result:
 
-- rebuilds local chunk/BM25 artifacts from committed source data
-- waits for the configured Qdrant endpoint
-- upserts the demo corpus into `QDRANT_COLLECTION`
+- local retrieval assets rebuild
+- Qdrant becomes reachable
+- the configured collection receives the demo corpus
 
-For App Platform, the simplest controlled-demo approach is:
+## Container build and local rehearsal
 
-1. deploy or expose Qdrant first
-2. run the bootstrap command once against that Qdrant target
-3. deploy the web service
+Build the image:
 
-You can keep this as a manual one-off step, or convert it into a deploy-time job later if you want a more automated rollout.
+```bash
+docker build --build-arg PRELOAD_EMBEDDING_MODEL=0 -t rmf-assistant:test .
+```
 
-## Storage expectations
+Rehearse the app against a reachable Qdrant endpoint:
 
-- Streamlit uploads are stored in the container filesystem under `data/uploads_*`.
-- Those uploads are ephemeral in App Platform and disappear on restart/redeploy.
-- The committed synthetic corpus is always present in the image.
-- Local BM25/chunk artifacts are reproducible and regenerated as needed.
-- Qdrant should be considered the only durable retrieval store for deployed demos.
+```bash
+docker run --rm -p 8501:8501 \
+  --env-file .env \
+  -e QDRANT_URL="http://<qdrant-host>:6333" \
+  -e QDRANT_COLLECTION="rmf_chunks" \
+  rmf-assistant:test
+```
 
-## DigitalOcean app spec template
-
-Use [`.do/app.yaml`](../.do/app.yaml) as a starting point.
-
-Update these placeholders before use:
-
-- `github.repo`
-- `github.branch`
-- `QDRANT_URL` or `QDRANT_HOST`/`QDRANT_PORT`
-- optional OpenRouter settings
-
-Add secrets in the DigitalOcean UI or encrypt them before committing an app spec update:
-
-- `QDRANT_API_KEY`
-- `OPENROUTER_API_KEY`
-
-## Local container demo path
-
-For local reproducibility:
+For a full local container demo, prefer:
 
 ```bash
 docker compose up --build
 ```
 
-This starts:
+## Health and smoke checks
 
-- `qdrant`
-- `qdrant-bootstrap` to seed the demo collection
-- `app`
+Before sharing the external URL:
 
-Then open `http://localhost:8501`.
+- verify the app root page loads
+- verify one retrieval-only question succeeds
+- verify one OpenRouter-backed question succeeds if LLM mode is enabled
+- verify the Qdrant seed command completed successfully
+
+Useful checks:
+
+```bash
+python scripts/bootstrap_demo_data.py --force --seed-qdrant --wait-timeout-seconds 180
+```
+
+```bash
+LLM_BACKEND=none python -m app.retrieval.retrieve "account management requirements"
+```
+
+In the browser:
+
+- ask `What does our access control policy say about least privilege?`
+- if OpenRouter is enabled, ask `What does our incident response plan say about escalation?`
+
+## Troubleshooting
+
+Symptom: App Platform service starts slowly or restarts
+
+- confirm Qdrant is reachable from the service
+- confirm the collection already exists if `REQUIRE_QDRANT_COLLECTION=1`
+- increase `STARTUP_QDRANT_TIMEOUT_SECONDS` if needed
+
+Symptom: app loads but answers fail
+
+- verify the Qdrant endpoint and collection name
+- rerun the seed step against the same endpoint
+
+Symptom: OpenRouter mode looks degraded
+
+- verify key, model, and provider availability
+- if the provider is unstable, run the demo in retrieval-only mode instead of forcing LLM mode
+
+Symptom: uploaded demo files disappear after restart
+
+- this is expected on App Platform without external storage
+
+## Current known gaps / assumptions
+
+- Retrieval-vs-LLM comparison is not fully validated unless the current environment can run both retrieval-only and OpenRouter paths without backend-visible failures.
+- Qdrant hosting choice is still pending if you have not already selected a durable external host for the demo.
+- Uploaded files are ephemeral on DigitalOcean App Platform unless external storage is added.
+- The current UI can surface raw upload/ingest exception text, which remains a demo risk if you perform live uploads.
