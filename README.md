@@ -25,6 +25,9 @@ This repository contains a demo-quality prototype that supports the Department o
 ### Why it matters
 RMF compliance work is complex and documentation-heavy. Teams spend significant effort locating relevant language across artifacts, mapping evidence to controls, and identifying gaps early enough to avoid delays. This prototype aims to reduce cognitive load with **repeatable, auditable** analysis—without claiming to replace human assessors.
 
+High-level architecture overview:
+- [`docs/app_overview.md`](docs/app_overview.md)
+
 ---
 
 ## Repository Structure
