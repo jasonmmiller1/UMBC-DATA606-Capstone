@@ -8,7 +8,7 @@
 
 ## Background
 
-The Department of Defense Risk Management Framework (RMF) is a structured approach for managing security and privacy risk in information systems. In practice, RMF work requires analysts to move repeatedly between control requirements, policy documents, implementation evidence, and gap assessments. The challenge is not only finding relevant text, but also determining whether a policy actually addresses the control intent and whether the available evidence is strong enough to support a conclusion.
+The Department of War (Defense) Risk Management Framework (RMF) is a structured approach for managing security and privacy risk in information systems. In practice, RMF work requires analysts to move repeatedly between control requirements, policy documents, implementation evidence, and gap assessments. The challenge is not only finding relevant text, but also determining whether a policy actually addresses the control intent and whether the available evidence is strong enough to support a conclusion.
 
 This project was motivated by that evidence-tracking problem. Policy and control artifacts are long, heterogeneous, and often difficult to cross-reference quickly during assessment work. A conventional question-answering interface can make this problem worse if it produces fluent but weakly grounded answers. For that reason, the project focused on an evidence-first assistant rather than a free-form chatbot.
 
@@ -169,7 +169,7 @@ This capstone produced a working RMF/policy assistant that is grounded in retrie
 
 The most important technical achievement was not simply adding an LLM to policy documents. It was building a system that can retrieve policy and control evidence, cite that evidence, reason across the two corpora for coverage-style questions, and abstain or degrade gracefully when reliable support is not present. The evaluation artifacts in the repository show that retrieval quality improved meaningfully between the Week 5 baseline and the Week 6 tuned default, especially for the policy-versus-control task that most closely represents the capstone's core research objective.
 
-By the final Week 7 state, the project delivered a coherent, demo-ready academic prototype with documented runtime assumptions, tested fallback behavior, and a clearer deployment story. That is a meaningful outcome for a graduate capstone focused on applied AI for evidence-grounded security analysis.
+By the final Week 7 state, the project delivered a coherent, demo-ready prototype with documented runtime assumptions, tested fallback behavior, and a clearer deployment story. That is a meaningful outcome for a graduate capstone focused on applied AI for evidence-grounded security analysis.
 
 ## Limitations
 
